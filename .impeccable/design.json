@@ -1,0 +1,129 @@
+{
+  "schemaVersion": 2,
+  "generatedAt": "2026-11-18T00:00:00Z",
+  "title": "Design System: Tarangini control tower",
+  "extensions": {
+    "colorMeta": {
+      "ground": { "role": "primary", "displayName": "Deep Indigo Ground", "canonical": "#16184a", "tonalRamp": ["#08081a","#0c0d28","#101135","#141643","#31325f","#666788","#9b9cb1","#d0d1db"] },
+      "card": { "role": "primary", "displayName": "Raised Indigo", "canonical": "#24276b", "tonalRamp": ["#0d0e25","#131539","#1a1c4d","#212361","#3d407c","#6f719e","#a1a2c0","#d3d4e1"] },
+      "agent": { "role": "primary", "displayName": "Agent Indigo", "canonical": "#2b2f9e", "tonalRamp": ["#0f1037","#171955","#1f2272","#272b8f","#4347a9","#7476bf","#a4a6d5","#d5d5ec"] },
+      "marigold": { "role": "secondary", "displayName": "Marigold", "canonical": "#ffb84d", "tonalRamp": ["#59401b","#896329","#b88538","#e7a746","#ffc061","#ffd08a","#ffe1b3","#fff1db"] },
+      "saved": { "role": "secondary", "displayName": "Mint (on paper)", "canonical": "#0f7a58", "tonalRamp": ["#052b1f","#08412f","#0b583f","#0e6f50","#2a896b","#61a891","#98c6b7","#cfe4de"] },
+      "deadline": { "role": "secondary", "displayName": "Deadline Red (on paper)", "canonical": "#c4262b", "tonalRamp": ["#450d0f","#691417","#8d1b1f","#b22227","#cb3f43","#d87074","#e6a2a4","#f3d4d5"] },
+      "paper": { "role": "neutral", "displayName": "Paper", "canonical": "#f3f4f8", "tonalRamp": ["#14172b","#363b58","#565c78","#8b90ab","#d5d8e6","#e4e6f0","#f3f4f8","#fafbfd"] }
+    },
+    "typographyMeta": {
+      "display-lg": { "displayName": "Figure", "purpose": "The rail rupee figure." },
+      "display-md": { "displayName": "Headline", "purpose": "Incident title, big counts, clock digits." },
+      "title": { "displayName": "Title", "purpose": "Stage names, section headings, button text." },
+      "figure": { "displayName": "Figure small", "purpose": "Strip amounts, stage numbers, timings; narrow width." },
+      "body": { "displayName": "Body", "purpose": "Agent statements, quoted clauses." },
+      "label": { "displayName": "Label", "purpose": "Metadata, tables, tooltips; the 15 px floor at 1440." }
+    },
+    "shadows": [
+      { "name": "sheet", "value": "0 1.47rem 2.93rem -1.2rem rgba(4, 5, 24, .7)", "purpose": "The only shadow: lifts the paper sheet off the indigo." }
+    ],
+    "motion": [
+      { "name": "ease", "value": "cubic-bezier(.2, .8, .2, 1)", "purpose": "Stage reveal, chevrons, rise-in of log rows and preview." },
+      { "name": "fast", "value": "150ms", "purpose": "Hover colour and background changes." },
+      { "name": "reveal", "value": "450ms", "purpose": "Stage opacity during replay." }
+    ],
+    "breakpoints": [
+      { "name": "header-wrap", "value": "960px" },
+      { "name": "phone", "value": "760px" }
+    ]
+  },
+  "components": [
+    {
+      "name": "Primary Button",
+      "kind": "button",
+      "refersTo": "button-primary",
+      "description": "Approve, in the decision rail.",
+      "html": "<button class=\"ds-btn-primary\">Approve</button>",
+      "css": ".ds-btn-primary { background: #f3f4f8; color: #16184a; min-height: 44px; padding: 0 20px; border: 1px solid transparent; border-radius: 8px; font: 600 17px system-ui, sans-serif; cursor: pointer; transition: background-color .15s, box-shadow .15s; } .ds-btn-primary:hover { background: #fff; box-shadow: 0 0 0 3px rgba(238,240,251,.18); } .ds-btn-primary:focus-visible { outline: 2px solid #eef0fb; outline-offset: 2px; }"
+    },
+    {
+      "name": "Secondary Button",
+      "kind": "button",
+      "refersTo": "button-secondary",
+      "description": "Watch the agent work; replay and discard actions.",
+      "html": "<button class=\"ds-btn-secondary\">Watch the agent work</button>",
+      "css": ".ds-btn-secondary { background: transparent; color: #eef0fb; min-height: 40px; padding: 0 16px; border: 1px solid #6a70b8; border-radius: 8px; font: 600 15px system-ui, sans-serif; cursor: pointer; transition: border-color .15s, background-color .15s; } .ds-btn-secondary:hover { border-color: #eef0fb; background: rgba(106,112,184,.12); } .ds-btn-secondary:focus-visible { outline: 2px solid #eef0fb; outline-offset: 2px; }"
+    },
+    {
+      "name": "Incident Tab (selected)",
+      "kind": "nav",
+      "refersTo": "incident-tab-selected",
+      "description": "The selected strip tab is paper and joins the sheet.",
+      "html": "<div class=\"ds-tab\"><span class=\"ds-tab-name\">NH44 closed</span><span class=\"ds-tab-amt\">Rs 1.74 L</span></div>",
+      "css": ".ds-tab { display: flex; justify-content: space-between; gap: 12px; padding: 10px 10px 22px; background: #f3f4f8; color: #14172b; border-radius: 6px 6px 0 0; font: 15px system-ui, sans-serif; } .ds-tab-name { font-weight: 600; } .ds-tab-amt { font-weight: 600; font-variant-numeric: tabular-nums lining-nums; color: #a84f00; }"
+    },
+    {
+      "name": "Clause Slip",
+      "kind": "card",
+      "refersTo": "clause-slip",
+      "description": "A quoted contract clause on a slip one step whiter than the sheet.",
+      "html": "<div class=\"ds-clause\" tabindex=\"0\"><blockquote>Where a weather event is declared, the credits in clauses 7.2 and 9.1 do not apply.</blockquote><p class=\"ds-cite\">DMart agreement, section 14.3, page 4 <span class=\"ds-ok\">Matches the PDF</span></p></div>",
+      "css": ".ds-clause { padding: 10px 18px; background: #fafbfd; border: 1px solid #d5d8e6; border-radius: 6px; color: #14172b; font: 17px/1.5 system-ui, sans-serif; transition: border-color .15s; } .ds-clause:hover, .ds-clause:focus-visible { border-color: #8b90ab; } .ds-clause:focus-visible { outline: 2px solid #2b2f9e; outline-offset: 2px; } .ds-cite { margin-top: 8px; padding-top: 8px; border-top: 1px solid #d5d8e6; font-size: 15px; color: #565c78; } .ds-ok { color: #0f7a58; font-weight: 600; margin-left: 8px; }"
+    },
+    {
+      "name": "Fix Option (checked)",
+      "kind": "custom",
+      "refersTo": "fix-option-checked",
+      "description": "A proposed fix as a radio row; checked uses the agent border and an inset outline.",
+      "html": "<label class=\"ds-opt\"><span class=\"ds-radio\"></span><span class=\"ds-opt-t\">Tell the 4 affected customers now</span><span class=\"ds-opt-m\">Saves Rs 1,73,622, costs Rs 160</span></label>",
+      "css": ".ds-opt { display: grid; grid-template-columns: 16px 1fr auto; gap: 12px; align-items: center; padding: 10px 14px; background: #fafbfd; border: 1px solid #2b2f9e; outline: 1px solid #2b2f9e; outline-offset: -2px; border-radius: 8px; color: #14172b; font: 17px system-ui, sans-serif; } .ds-radio { width: 16px; height: 16px; border: 1.5px solid #2b2f9e; border-radius: 50%; display: grid; place-content: center; } .ds-radio::after { content: ''; width: 8px; height: 8px; border-radius: 50%; background: #2b2f9e; } .ds-opt-t { font-weight: 600; } .ds-opt-m { font-size: 15px; color: #363b58; }"
+    },
+    {
+      "name": "View As Segmented Control",
+      "kind": "chip",
+      "refersTo": "segmented",
+      "description": "Role switch in the header, on the indigo.",
+      "html": "<div class=\"ds-seg\" role=\"radiogroup\"><button role=\"radio\" aria-checked=\"true\">Asha</button><button role=\"radio\" aria-checked=\"false\">Kiran</button><button role=\"radio\" aria-checked=\"false\">Meera</button></div>",
+      "css": ".ds-seg { display: inline-flex; padding: 2px; border: 1px solid #33367a; border-radius: 8px; background: #16184a; } .ds-seg button { font: 15px system-ui, sans-serif; padding: 4px 12px; border: 0; border-radius: 6px; background: none; color: #a9afdb; cursor: pointer; transition: color .15s, background-color .15s; } .ds-seg button:hover { color: #eef0fb; background: rgba(36,39,107,.55); } .ds-seg button[aria-checked='true'] { background: #24276b; color: #eef0fb; font-weight: 600; } .ds-seg button:focus-visible { outline: 2px solid #eef0fb; outline-offset: 2px; }"
+    },
+    {
+      "name": "Rail Figure and Clock",
+      "kind": "custom",
+      "refersTo": "display-lg",
+      "description": "Marigold money at risk with the running deadline in red, on the indigo.",
+      "html": "<div class=\"ds-rail\"><span class=\"ds-lbl\">At risk</span><span class=\"ds-fig\">Rs 1,73,622</span><div class=\"ds-clock\"><b>22:56</b> left to tell customers, until 11:10</div></div>",
+      "css": ".ds-rail { background: #16184a; padding: 16px; width: 320px; color: #eef0fb; font: 15px system-ui, sans-serif; } .ds-lbl { display: block; color: #a9afdb; } .ds-fig { display: block; font: 600 44px/1.1 system-ui, sans-serif; font-variant-numeric: tabular-nums lining-nums; color: #ffb84d; } .ds-clock { margin-top: 14px; padding: 10px 0; border-top: 1px solid #33367a; border-bottom: 1px solid #33367a; color: #ff9486; } .ds-clock b { font: 600 22px system-ui, sans-serif; font-variant-numeric: tabular-nums lining-nums; margin-right: 8px; }"
+    }
+  ],
+  "narrative": {
+    "northStar": "Sheet on indigo",
+    "overview": "One paper sheet carries the evidence; the machine side (header, incident strip, decision rail, a slim frame) sits on a deep indigo ground. The sheet is the only lit surface and holds the only shadow. Inside it, structure is lines, not boxes. The recruiter reads one incident top to bottom (caught, priced, contract, decision), then approves in the rail.",
+    "keyCharacteristics": [
+      "Paper dominates; indigo is header, strip, rail and a slim frame (`--frame` 1.5rem).",
+      "One shadow in the whole UI (the sheet). Everything inside is hairlines.",
+      "Money is the loudest type: marigold on the indigo, tabular figures, Indian grouping (Rs 1,73,622).",
+      "Honest machine: elapsed times and step counts are shown as recorded, never faked."
+    ],
+    "rules": [
+      { "name": "The Red Is a Clock Rule", "body": "Red appears only for a running deadline: the rail countdown, the strip's clock icon, the phone bar subline. When the clock closes it goes muted; it never marks errors or emphasis.", "section": "colors" },
+      { "name": "The Marigold Money Rule", "body": "On the indigo, marigold is money at risk and nothing else; it turns mint when the money is saved. On paper the same roles use the darker Amber and Mint.", "section": "colors" },
+      { "name": "The Two Sets Rule", "body": "Components read the ink and line tokens instead of hard-coding colours, so they work on both the indigo and the paper.", "section": "colors" },
+      { "name": "The Text Floor Rule", "body": "No text under --t1: 15 px at 1440 and above (it scales up), 14 px on phones.", "section": "typography" },
+      { "name": "The Tabular Rupee Rule", "body": "Every rupee figure, time, count and duration uses tabular, lining numerals. Rupees use Indian grouping and a non-breaking space after Rs.", "section": "typography" },
+      { "name": "The One Shadow Rule", "body": "Only the sheet casts a shadow. Inside the sheet, depth is a hairline plus the slip tone.", "section": "elevation" }
+    ],
+    "dos": [
+      "Do write every size in rem so the composition scales with the viewport.",
+      "Do keep text at or above `--t1`.",
+      "Do use red only for a running deadline, and marigold (on the indigo) only for money at risk.",
+      "Do show the agent's real step counts and milliseconds, and state why a control is disabled.",
+      "Do show a fix's result as before and after in the rail preview.",
+      "Do keep one shadow (the sheet); use hairlines and the slip tone inside it.",
+      "Do use the token variables for text and lines so a component works on both indigo and paper."
+    ],
+    "donts": [
+      "Don't add a second shadow, a box around the rail, or a full-bleed map console.",
+      "Don't use red for errors; errors are an ink note with an edge border.",
+      "Don't shrink text below the floor to fit; reflow instead.",
+      "Don't size geometry from raw viewport maths; anchor to content and rem.",
+      "Don't request external fonts or scripts at runtime.",
+      "Don't fake streaming or hide latency, fallbacks or role limits."
+    ]
+  }
+}

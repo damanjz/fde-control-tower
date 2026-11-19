@@ -1,0 +1,8 @@
+/* Self-hosted variable fonts (OFL, from @fontsource-variable), latin subset only. No external requests. */
+@font-face { font-family: "Red Hat Display"; src: url(red-hat-display-latin-wght-normal.woff2) format("woff2-variations"); font-weight: 300 900; font-display: swap; }
+@font-face { font-family: "Red Hat Text"; src: url(red-hat-text-latin-wght-normal.woff2) format("woff2-variations"); font-weight: 300 700; font-display: swap; }
+@font-face { font-family: "Red Hat Mono"; src: url(red-hat-mono-latin-wght-normal.woff2) format("woff2-variations"); font-weight: 300 700; font-display: swap; }
+@font-face { font-family: "Schibsted Grotesk"; src: url(schibsted-grotesk-latin-wght-normal.woff2) format("woff2-variations"); font-weight: 400 900; font-display: swap; }
+@font-face { font-family: "Literata"; src: url(literata-latin-wght-normal.woff2) format("woff2-variations"); font-weight: 200 900; font-display: swap; }
+@font-face { font-family: "Hanken Grotesk"; src: url(hanken-grotesk-latin-wght-normal.woff2) format("woff2-variations"); font-weight: 100 900; font-display: swap; }
+@font-face { font-family: "Anek Latin"; src: url(anek-latin-latin-wdth-normal.woff2) format("woff2-variations"); font-weight: 100 800; font-stretch: 75% 125%; font-display: swap; }

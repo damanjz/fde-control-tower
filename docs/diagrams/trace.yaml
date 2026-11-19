@@ -1,0 +1,25 @@
+type: trace
+kicker: FDE Portfolio · 07
+title: "One request, traced end to end: NH44 closed near Adilabad"
+lanes:
+  - {id: alert, label: Alert feed}
+  - {id: engine, label: Impact engine}
+  - {id: agent, label: Agent (LLM), hot: true}
+  - {id: tools, label: Tools + checks}
+  - {id: db, label: Postgres}
+  - {id: asha, label: Asha}
+steps:
+  - {from: alert, to: engine, text: "NH44 closed near Adilabad, 26 h"}
+  - {from: engine, to: db, text: "affected shipments and exposure written", tone: muted}
+  - {from: asha, to: agent, text: "Run the agent on the NH44 incident"}
+  - {from: agent, to: tools, text: "get_incident, find_affected"}
+  - {from: agent, to: tools, text: "compute_exposure: Rs 1,73,622, all waivable by 11:10"}
+  - {from: agent, to: tools, text: "get_clause: MSA-7.2 and MSA-14.3"}
+  - {from: tools, to: db, text: "hybrid search over 240 clause chunks, as asha may read", tone: muted}
+  - {from: agent, to: tools, text: "list_options: notify, update ETAs; re-route does not pay"}
+  - {from: agent, to: tools, text: "propose_playbooks, checked: quotes, figures, clauses fetched", tone: accent}
+  - {from: tools, to: asha, text: "Notify customers: costs Rs 160, saves Rs 1,73,622", tone: accent}
+  - {from: asha, to: tools, text: "Approve (5 s undo hold)"}
+  - {from: tools, to: db, text: "notify executed, outbox message, audit row", tone: muted}
+  - {from: db, to: asha, text: "Exposure Rs 1,73,622 to Rs 0", tone: accent}
+note: "Lanes are components; arrows are calls in order. Grey arrows are database reads and writes. Step timings are left out; a whole run takes 30 to 60 s."

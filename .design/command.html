@@ -1,0 +1,520 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Tarangini Control Tower</title>
+<link rel="stylesheet" href="base.css">
+<style>
+/* The picked direction: A's live map is home; click an incident and B's brief slides in beside the map.
+   One dark palette, three status colours, one type family. Quiet until something needs you. */
+:root{--bg:#070a0f;--land:#0c121a;--coast:#223040;--panel:#0b0f15;--panel2:#10161e;--line:#1a222d;--line2:#26303d;
+  --ink:#e8edf2;--soft:#c3ccd7;--mut:#8593a5;--dim:#56616f;--ok:#35d0c0;--watch:#ffb547;--risk:#ff5a4e;
+  --ui:"Segoe UI Variable Text","Segoe UI",system-ui,sans-serif;--disp:"Segoe UI Variable Display","Segoe UI",system-ui,sans-serif;
+  --fig:Bahnschrift,"DIN Alternate","Segoe UI",sans-serif;--mono:"Cascadia Mono",Consolas,monospace;--top:56px;--rail:380px;--brief:min(720px,52vw)}
+body{background:var(--bg);color:var(--ink);font:400 14px/1.45 var(--ui)}
+:focus-visible{outline:2px solid #fff;outline-offset:2px}
+.app{display:grid;grid-template-rows:var(--top) 1fr;height:calc(100dvh - var(--bar))}
+/* ---- top ---- */
+.top{display:flex;align-items:center;gap:20px;padding:0 18px;border-bottom:1px solid var(--line);background:#080b10}
+.brand{display:flex;align-items:center;gap:10px;white-space:nowrap}
+.brand i{width:20px;height:20px;border-radius:6px;background:conic-gradient(from 210deg,var(--ok),#5ea0ff,var(--ok))}
+.brand b{font:600 15px/1 var(--disp)}
+.tabs{display:flex;align-items:center;gap:2px;margin-left:8px;flex:none}
+.tabs button>*{flex:none}
+.tabs button{display:inline-flex;align-items:center;padding:8px 12px;border-radius:7px;color:var(--mut);font-size:13px;line-height:18px;white-space:nowrap;position:relative}
+.tabs button:hover{color:var(--ink)}
+.tabs button[aria-selected=true]{color:var(--ink);background:var(--panel2)}
+.tabs button .ct{margin-left:6px;font:600 11px var(--fig);color:var(--risk)}
+.tabs button .ct.dlq{color:var(--mut)}
+.outage .tabs button .ct.dlq{display:inline-block;min-width:20px;padding:1px 6px;border-radius:9px;background:var(--risk);color:#120606;text-align:center;animation:blink 1.6s infinite}
+@keyframes blink{50%{opacity:.55}}
+/* outage banner on the map: what is failing and what the tower is doing about it */
+.banner{position:absolute;left:50%;top:14px;transform:translate(-50%,-8px);display:none;align-items:center;gap:10px;max-width:calc(100% - 140px);padding:8px 14px;border-radius:10px;background:#1c0d0d;border:1px solid color-mix(in srgb,var(--risk) 60%,transparent);color:#ffd6d2;font-size:12.5px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;opacity:0;transition:opacity .3s,transform .3s var(--ease)}
+.banner b{color:#fff;font-weight:600}
+.banner button{color:var(--risk);font-weight:600;text-decoration:underline;text-underline-offset:3px}
+.outage .banner{display:flex;opacity:1;transform:translate(-50%,0)}
+.outage .cap{top:62px}
+.kpis{display:flex;gap:22px;margin-left:auto}
+.kpi{text-align:right}
+.kpi b{display:block;font:600 17px/1 var(--fig);font-stretch:90%}
+.kpi span{font-size:11px;color:var(--mut)}
+.kpi.r b{color:var(--risk)}
+.who{display:flex;align-items:center;gap:8px;padding:4px 6px 4px 4px;border:1px solid var(--line2);border-radius:20px;position:relative}
+.who .av{width:26px;height:26px;border-radius:50%;display:grid;place-items:center;font:600 11px var(--ui);background:#253041}
+.who select{background:none;border:0;color:var(--ink);font:500 12.5px var(--ui);padding-right:4px;cursor:pointer}
+.who select option{background:#0b0f15}
+.out{display:flex;align-items:center;gap:7px;font-size:12px;color:var(--mut);white-space:nowrap}
+.out i{width:28px;height:16px;border-radius:9px;background:var(--line2);position:relative;transition:background .3s}
+.out i::after{content:"";position:absolute;top:2px;left:2px;width:12px;height:12px;border-radius:50%;background:#cfd6de;transition:transform .3s var(--ease)}
+.out[aria-pressed=true]{color:var(--risk)}.out[aria-pressed=true] i{background:var(--risk)}.out[aria-pressed=true] i::after{transform:translateX(12px)}
+.clock{font:500 12.5px var(--mono);color:var(--mut)}
+/* ---- views ---- */
+.view{min-height:0;display:none}
+.view.on{display:grid}
+/* live map */
+#v-map{grid-template-columns:minmax(0,1fr) var(--rail);transition:grid-template-columns .55s var(--ease)}
+#v-map.briefing{grid-template-columns:minmax(0,1fr) var(--brief)}
+.map{position:relative;overflow:hidden;background:radial-gradient(110% 90% at 45% 45%,#0a1018 0%,#070a0f 70%)}
+.map svg{position:absolute;inset:0;width:100%;height:100%}
+.land{fill:var(--land);stroke:var(--coast);stroke-width:1;stroke-linejoin:round}
+.grat{stroke:#0f151e;stroke-width:1}
+.lane{fill:none;stroke:#1e2937;stroke-width:1;transition:stroke .4s,opacity .4s}
+.lane.hot{stroke:color-mix(in srgb,var(--risk) 75%,transparent);stroke-width:1.5}
+.dim .lane:not(.hot),.dim .truck:not(.hot),.dim .city:not(.hot),.dim .mk:not(.hot){opacity:.16}
+.city{fill:#3e4a5a}.city.hot{fill:#dfe6ee}
+.cityl{fill:var(--mut);font:11px var(--ui);paint-order:stroke;stroke:#070a0f;stroke-width:3px;opacity:0;transition:opacity .4s;pointer-events:none}
+.dim .cityl.hot{opacity:1}
+.dc{cursor:pointer}
+.dc circle{fill:#070a0f;stroke:#dfe6ee;stroke-width:1.5}.dc .core{fill:#dfe6ee;stroke:none}
+.dc text{fill:var(--ink);font:600 11.5px var(--disp);paint-order:stroke;stroke:#070a0f;stroke-width:4px;letter-spacing:.04em}
+.truck{cursor:pointer;transition:opacity .4s}
+.truck[data-s="on time"]{fill:var(--ok)}.truck[data-s=watch]{fill:var(--watch)}.truck[data-s="at risk"]{fill:var(--risk)}
+.truck.stale{fill:none;stroke:var(--watch);stroke-width:1}
+.truck:hover{stroke:#fff;stroke-width:1.5}
+.mk{cursor:pointer}
+.mk .ring{fill:none;stroke:var(--risk);stroke-width:1.2;transform-box:fill-box;transform-origin:center;animation:pulse 2.6s var(--ease) infinite}
+.mk .ring.b{animation-delay:1.3s}
+.mk.zero .ring{stroke:var(--watch)}
+.mk .dot{fill:var(--risk)}.mk.zero .dot{fill:var(--watch)}
+.mk .chip rect{fill:#0b0f15;stroke:var(--line2)}
+.mk .chip text{fill:var(--ink);font:600 11px var(--ui)}
+.mk .chip .v{fill:var(--risk);font:600 11px var(--fig)}
+.mk.zero .chip .v{fill:var(--watch)}
+.mk:hover .chip rect,.mk.sel .chip rect{stroke:#fff}
+@keyframes pulse{0%{transform:scale(.4);opacity:.9}100%{transform:scale(1.6);opacity:0}}
+.zoom{position:absolute;right:14px;top:14px;display:grid;border:1px solid var(--line2);border-radius:8px;overflow:hidden;background:#0b0f15}
+.zoom button{width:32px;height:30px;display:grid;place-items:center;color:var(--soft);font-size:16px}
+.zoom button+button{border-top:1px solid var(--line2)}
+.zoom button:hover{background:var(--panel2);color:#fff}
+.legend{position:absolute;left:16px;bottom:14px;display:flex;gap:16px;font-size:12px;color:var(--mut)}
+.legend i{display:inline-block;width:8px;height:8px;border-radius:50%;margin-right:6px}
+.cap{position:absolute;left:18px;top:16px;max-width:440px;pointer-events:none}
+.cap small{font:600 10.5px var(--mono);letter-spacing:.1em;color:var(--mut);text-transform:uppercase}
+.cap b{display:block;font:600 20px/1.2 var(--disp);margin-top:6px}
+.cap span{display:block;font-size:12.5px;color:var(--mut);margin-top:4px}
+.tip{position:absolute;z-index:5;pointer-events:none;min-width:200px;padding:10px 12px;border-radius:10px;background:#0d1219;border:1px solid var(--line2);box-shadow:0 12px 30px -10px #000;font-size:12px;opacity:0;transform:translateY(4px);transition:opacity .15s,transform .15s}
+.tip.on{opacity:1;transform:none}
+.tip b{display:block;font:600 13px var(--disp)}
+.tip div{display:flex;justify-content:space-between;gap:14px;color:var(--soft);margin-top:3px}
+.tip div span:first-child{color:var(--mut)}
+/* rail */
+.side{border-left:1px solid var(--line);background:var(--panel);min-height:0;position:relative;overflow:hidden}
+.rail,.brief{position:absolute;inset:0;overflow-y:auto;scrollbar-width:thin;scrollbar-color:#253041 transparent}
+.rail{transition:opacity .3s}
+.briefing .rail{opacity:0;pointer-events:none}
+.rh{display:flex;justify-content:space-between;align-items:baseline;padding:16px 18px 10px}
+.rh b{font:600 13px var(--disp)}.rh span{font-size:12px;color:var(--mut)}
+.card{display:grid;grid-template-columns:1fr auto;gap:3px 12px;width:100%;padding:14px 18px;border-top:1px solid var(--line);position:relative}
+.card::before{content:"";position:absolute;left:0;top:0;bottom:0;width:3px;background:var(--c)}
+.card:hover{background:var(--panel2)}
+.card .k{font:600 10px var(--mono);letter-spacing:.09em;text-transform:uppercase;color:var(--mut)}
+.card .x{grid-row:1/3;grid-column:2;font:600 22px/1 var(--fig);font-stretch:88%;align-self:center}
+.card .x.z{color:var(--mut)}
+.card .t{font-weight:600;line-height:1.3}
+.card .m{grid-column:1/-1;font-size:12px;color:var(--mut)}
+.card .st{grid-column:1/-1;font:600 11px var(--ui);color:var(--ok)}
+.railfoot{padding:16px 18px;border-top:1px solid var(--line);font-size:12px;color:var(--mut)}
+/* brief */
+.brief{opacity:0;transform:translateX(24px);pointer-events:none;transition:opacity .35s .15s,transform .5s var(--ease)}
+.briefing .brief{opacity:1;transform:none;pointer-events:auto}
+.bin{padding:22px 30px 60px}
+.bx{display:flex;justify-content:space-between;align-items:center}
+.bx .k{font:600 11px var(--mono);letter-spacing:.09em;text-transform:uppercase;color:var(--mut);display:flex;gap:12px}
+.bx .k .kind{color:var(--risk)}
+.close{width:32px;height:32px;border-radius:8px;display:grid;place-items:center;color:var(--soft);border:1px solid var(--line2)}
+.close:hover{background:#fff;color:#000}
+.brief h2{font:600 clamp(26px,2.3vw,34px)/1.12 var(--disp);letter-spacing:-.015em;margin-top:12px}
+.brief .lead{color:var(--soft);font-size:15px;margin-top:10px;max-width:62ch}
+.money{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));margin-top:22px;border-top:1px solid var(--line2)}
+.money div{padding:12px 12px 12px 0}
+.money b{display:block;font:600 28px/1 var(--fig);font-stretch:88%}
+.money .h b{color:var(--risk)}
+.money span{font-size:12px;color:var(--mut)}
+.sec{margin-top:30px}
+.sec h3{display:flex;justify-content:space-between;gap:12px;font:600 11px var(--mono);letter-spacing:.09em;text-transform:uppercase;color:var(--mut);padding-bottom:8px;border-bottom:1px solid var(--line)}
+.chain{display:flex;align-items:stretch;margin-top:14px}
+.node{flex:1 1 0;min-width:0;padding:10px 12px;border:1px solid var(--line2);border-radius:10px;background:var(--panel2)}
+.node small{display:block;font:600 9.5px var(--mono);letter-spacing:.09em;text-transform:uppercase;color:var(--mut)}
+.node b{display:block;font-size:13.5px;margin-top:3px;line-height:1.25}
+.node span{display:block;font-size:11.5px;color:var(--mut);margin-top:2px}
+.node.src{border-color:color-mix(in srgb,var(--risk) 60%,transparent)}
+.link{flex:none;width:18px;align-self:center;height:1px;background:var(--line2)}
+.agent{margin-top:10px}
+.agent div{display:grid;grid-template-columns:22px 1fr auto;gap:10px;padding:8px 0;border-bottom:1px solid var(--line);font-size:13px;color:var(--soft)}
+.agent i{font:600 11px var(--mono);font-style:normal;color:var(--dim);padding-top:1px}
+.agent em{font:11px var(--mono);font-style:normal;color:var(--dim)}
+.trace{font:11px var(--mono);color:var(--dim);margin-top:8px}
+.quote{margin-top:12px;padding:12px 14px;border-left:2px solid var(--watch);background:#121821;color:var(--soft);font-size:13.5px}
+.quote b{display:block;font:600 10.5px var(--mono);letter-spacing:.08em;color:var(--watch);margin-bottom:4px}
+.pb{display:grid;grid-template-columns:1fr auto;gap:3px 14px;align-items:center;padding:12px 0;border-bottom:1px solid var(--line)}
+.pb b{font-size:14px}
+.pb span{font-size:12px;color:var(--mut)}
+.pb .n{display:flex;gap:14px;font:600 12px var(--fig)}
+.pb .n em{font-style:normal;color:var(--ok)}
+.pb button{grid-row:1/4;grid-column:2;padding:8px 14px;border-radius:8px;font:600 12.5px var(--ui);border:1px solid var(--line2);white-space:nowrap}
+.pb button.need{border-color:var(--watch);color:var(--watch)}
+.pb button:hover{background:#fff;color:#000;border-color:#fff}
+.pb button.done{border-color:var(--ok);color:var(--ok);pointer-events:none}
+.pb .lk{font:11px var(--mono);color:var(--watch)}
+.pb .au{grid-column:1/-1;font:11px var(--mono);color:var(--ok)}
+.tw{overflow-x:auto}
+table{width:100%;border-collapse:collapse;font-size:12.5px;margin-top:8px}
+th{text-align:left;font:600 10px var(--mono);letter-spacing:.08em;text-transform:uppercase;color:var(--mut);padding:8px 10px 8px 0;border-bottom:1px solid var(--line2)}
+td{padding:7px 10px 7px 0;border-bottom:1px solid var(--line);color:var(--soft);white-space:nowrap}
+td.r,th.r{text-align:right}
+td .id{font:11px var(--mono);color:var(--mut)}
+.mask{display:inline-block;padding:1px 6px;border-radius:4px;background:repeating-linear-gradient(135deg,#1a222d 0 4px,#141b24 4px 8px);font:10.5px var(--mono);color:var(--mut)}
+.hid td{color:var(--watch);font-style:italic;white-space:normal}
+/* other views */
+.page{grid-template-columns:minmax(0,1fr);overflow-y:auto;padding:28px 32px 60px}
+.page h1{font:600 26px/1.1 var(--disp)}
+.page .sub{color:var(--mut);margin-top:6px}
+.grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(260px,1fr));gap:12px;margin-top:20px}
+.feed{padding:14px 16px;border:1px solid var(--line2);border-radius:12px;background:var(--panel)}
+.feed b{display:block;font-size:13.5px}
+.feed .pct{font:600 26px/1 var(--fig);margin-top:10px}
+.feed .pct.w{color:var(--watch)}.feed .pct.b{color:var(--risk)}
+.feed span{display:block;font-size:12px;color:var(--mut);margin-top:6px}
+.dl{margin-top:28px}
+.dl h2,.au2 h2{font:600 15px var(--disp)}
+.dlr{display:grid;grid-template-columns:90px 140px minmax(0,1fr) minmax(0,1fr) auto;gap:14px;align-items:center;padding:11px 0;border-bottom:1px solid var(--line);font-size:12.5px}
+.dlr .id{font:11px var(--mono);color:var(--mut)}
+.dlr code{font:11.5px var(--mono);color:var(--soft);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.dlr .fx{color:var(--soft)}
+.dlr button{padding:7px 12px;border-radius:8px;border:1px solid var(--line2);font:600 12px var(--ui);white-space:nowrap}
+.dlr button:hover{background:#fff;color:#000}
+.dlr.ok{opacity:.55}.dlr.ok button{border-color:var(--ok);color:var(--ok);pointer-events:none}
+.it{display:grid;grid-template-columns:34px minmax(0,1fr) 140px 120px 90px;gap:14px;align-items:center;width:100%;padding:13px 0;border-bottom:1px solid var(--line)}
+.it:hover{background:#0b0f15}
+.it i{font:600 12px var(--mono);font-style:normal;color:var(--dim)}
+.it b{font-weight:600}.it small{display:block;font-size:12px;color:var(--mut)}
+.it .bar{height:4px;border-radius:2px;background:var(--line);overflow:hidden}
+.it .bar span{display:block;height:100%;background:var(--risk)}
+.it em{font:600 16px var(--fig);font-style:normal;text-align:right}
+.au2{margin-top:6px}
+.ar{display:grid;grid-template-columns:70px 150px minmax(0,1fr);gap:14px;padding:11px 0;border-bottom:1px solid var(--line);font-size:13px}
+.ar time{font:12px var(--mono);color:var(--mut)}
+.ar b{font-weight:600}
+.ar.new{animation:inn .5s var(--ease)}
+@keyframes inn{from{background:#123}}
+@media(max-width:1279px){.kpis .kpi:nth-child(2),.clock{display:none}:root{--rail:340px;--brief:min(620px,56vw)}.who select{max-width:120px}.kpis{gap:14px}.top{gap:14px}.tabs button{padding:8px 9px}}
+@media(max-width:999px){
+  .app{height:auto;display:block}
+  .top{flex-wrap:wrap;height:auto;padding:12px 14px;gap:10px 14px}
+  .tabs{order:3;width:100%;margin:0;overflow-x:auto}
+  .kpis{margin-left:auto}
+  .view.on{display:block}
+  .map{height:56vh;min-height:340px}
+  .side{border-left:0;border-top:1px solid var(--line);overflow:visible}
+  .rail,.brief{position:static;overflow:visible}
+  .brief{display:none;transform:none}
+  .briefing .brief{display:block}.briefing .rail{display:none}
+  .bin{padding:18px 14px 40px}
+  .money{grid-template-columns:1fr 1fr}.money div:last-child{grid-column:1/-1}
+  .chain{flex-direction:column;gap:6px}.chain .link{display:none}
+  .page{padding:20px 14px 40px}
+  .dlr{grid-template-columns:1fr auto}.dlr>*:not(button):not(.fx){grid-column:1}.dlr .fx{grid-column:1}.dlr button{grid-row:1/5;grid-column:2}
+  .it{grid-template-columns:28px minmax(0,1fr) 80px}.it .bar,.it .when{display:none}
+  .ar{grid-template-columns:60px minmax(0,1fr)}.ar span:nth-child(2){display:none}
+}
+</style>
+</head>
+<body>
+<div class="app" id="app">
+  <header class="top">
+    <div class="brand"><i></i><b>Tarangini Control Tower</b></div>
+    <nav class="tabs" role="tablist" id="tabs">
+      <button role="tab" data-v="map" aria-selected="true">Live map</button>
+      <button role="tab" data-v="inc" aria-selected="false">Incidents<span class="ct" id="ct"></span></button>
+      <button role="tab" data-v="health" aria-selected="false">Data health<span class="ct dlq" id="dlct"></span></button>
+      <button role="tab" data-v="audit" aria-selected="false">Audit</button>
+    </nav>
+    <div class="kpis" id="kpis"></div>
+    <span class="clock num" id="clock"></span>
+    <label class="who"><span class="av" id="av"></span><select id="role" aria-label="View as"></select></label>
+    <button class="out" id="out" aria-pressed="false" title="Fail 30% of carrier API calls and send a malformed ERP file"><i></i>Outage</button>
+  </header>
+
+  <section class="view on" id="v-map">
+    <div class="map" id="mapwrap">
+      <svg id="map" role="img" aria-label="India: warehouses, lanes, trucks and incidents"><g id="world"></g></svg>
+      <div class="cap" id="cap"></div>
+      <div class="zoom"><button id="zin" aria-label="Zoom in">+</button><button id="zout" aria-label="Zoom out">&minus;</button><button id="zfit" aria-label="Show all India">&#8634;</button></div>
+      <div class="legend"><span><i style="background:var(--ok)"></i>On time</span><span><i style="background:var(--watch)"></i>Watch</span><span><i style="background:var(--risk)"></i>At risk</span></div>
+      <div class="tip" id="tip"></div>
+      <div class="banner" id="banner" role="status" aria-live="polite"></div>
+    </div>
+    <aside class="side">
+      <div class="rail" id="rail"></div>
+      <div class="brief" id="brief" tabindex="-1"></div>
+    </aside>
+  </section>
+  <section class="view page" id="v-inc"></section>
+  <section class="view page" id="v-health"></section>
+  <section class="view page" id="v-audit"></section>
+</div>
+<script src="data.js"></script>
+<script src="india.js"></script>
+<script src="shared.js"></script>
+<script>
+conceptbar("A+B", "Command", "The pick: A's live map, B's brief on click. Simulated morning on the real network; borders from Natural Earth (India view).");
+document.querySelector(".mockbar nav").innerHTML = '<a href="index.html">All concepts</a>';
+clock(document.getElementById("clock"));
+const NS = "http://www.w3.org/2000/svg", svg = document.getElementById("map"), world = document.getElementById("world"), wrap = document.getElementById("mapwrap");
+let role = "vp", sel = null, chaos = false;
+const KC = { Weather: "var(--watch)", Facility: "var(--risk)", Carrier: "var(--risk)", Supplier: "#7aa7ff" };
+const approved = new Map(), fixed = new Set();
+const audit = [
+  { t: "10:31", who: "Agent", what: "Opened D-117 from the Kolkata DC maintenance feed" },
+  { t: "10:12", who: "Asha Rao", what: "Opened D-114; asked for a stock-transfer option" },
+  { t: "09:58", who: "Agent", what: "Masked 3 driver phone numbers in a reply to Dispatcher, South" },
+  { t: "09:40", who: "System", what: "Sent 14 ERP rows to dead letters: blank promised date" },
+  { t: "09:12", who: "Agent", what: "Opened D-118 from an IMD alert and a police closure notice" },
+];
+const me = () => C.roles.find((r) => r.id === role);
+const visible = () => C.disruptions.filter((d) => role !== "south" || d.shipments.some((id) => shipOf(id).dc === "DC-HYD"));
+const mine = (d) => d.shipments.map(shipOf).filter(ROLE_SCOPE[role]);
+const share = (d, ships) => (d.value ? d.exposure * (ships.reduce((a, s) => a + s.value, 0) / d.value) : d.exposure);
+const short = (t) => t.split(" ").slice(0, 3).join(" ");
+
+/* ---------- map ---------- */
+let P0, cam = { s: 1, tx: 0, ty: 0 }, lanes = {}, trucks = [], items = [];
+const P = (lat, lon) => { const [x, y] = P0(lat, lon); return [x * cam.s + cam.tx, y * cam.s + cam.ty]; };
+function el(tag, attrs, parent = world) { const e = document.createElementNS(NS, tag); for (const k in attrs) e.setAttribute(k, attrs[k]); parent.appendChild(e); return e; }
+const DC_CITY = new Set(C.dcs.map((d) => d.city.split(" (")[0]));
+function drawMap() {
+  world.innerHTML = ""; items = []; lanes = {};
+  const r = wrap.getBoundingClientRect();
+  P0 = projector(r.width, r.height, 40);
+  const g0 = el("g", {});
+  for (let lat = 8; lat <= 36; lat += 4) items.push({ n: el("line", { class: "grat" }, g0), u: (n) => { const [x1, y] = P(lat, 60), [x2] = P(lat, 100); n.setAttribute("x1", x1); n.setAttribute("x2", x2); n.setAttribute("y1", y); n.setAttribute("y2", y); } });
+  for (let lon = 64; lon <= 100; lon += 4) items.push({ n: el("line", { class: "grat" }, g0), u: (n) => { const [x, y1] = P(40, lon), [, y2] = P(4, lon); n.setAttribute("x1", x); n.setAttribute("x2", x); n.setAttribute("y1", y1); n.setAttribute("y2", y2); } });
+  for (const ring of window.INDIA) items.push({ n: el("path", { class: "land" }), u: (n) => n.setAttribute("d", "M" + ring.map(([lon, lat]) => P(lat, lon).map((v) => v.toFixed(1)).join(",")).join("L") + "Z") });
+  for (const z of C.zones) items.push({ n: el("path", { class: "lane", "data-z": z.id }), u: (n) => { const L = lanePath(P, dcOf(z.dc), z); lanes[z.id] = L; n.setAttribute("d", L.d); } });
+  trucks = C.shipments.map((s) => ({ s, node: el("circle", { r: 2.7, class: "truck", "data-s": s.status, "data-id": s.id }) }));
+  for (const z of C.zones) {
+    items.push({ n: el("circle", { r: 2.3, class: "city", "data-z": z.id }), u: (n) => { const [x, y] = P(z.lat, z.lon); n.setAttribute("cx", x); n.setAttribute("cy", y); } });
+    if (DC_CITY.has(z.city)) continue;
+    const t = el("text", { class: "cityl", "data-z": z.id }); t.textContent = z.city;
+    items.push({ n: t, u: (n) => { const [x, y] = P(z.lat, z.lon); n.setAttribute("x", x + 6); n.setAttribute("y", y + 4); } });
+  }
+  for (const d of C.dcs) {
+    const g = el("g", { class: "dc", "data-dc": d.id });
+    const a = el("circle", { r: 9 }, g), b = el("circle", { r: 3.5, class: "core" }, g), t = el("text", {}, g);
+    t.textContent = d.city.split(" (")[0].toUpperCase();
+    items.push({ n: g, u: () => { const [x, y] = P(d.lat, d.lon); a.setAttribute("cx", x); a.setAttribute("cy", y); b.setAttribute("cx", x); b.setAttribute("cy", y); t.setAttribute("x", x + 14); t.setAttribute("y", y + 4); } });
+  }
+  // incident markers with a label chip: where it is, what it is, what it costs
+  for (const d of C.disruptions) {
+    const at = d.lat ? { lat: d.lat, lon: d.lon } : d.dc ? dcOf(d.dc) : d.carrier ? zoneOf("Z22") : null;
+    const anchor = at ?? (() => { const z = zoneOf(shipOf(d.shipments[0]).zone); return { lat: z.lat, lon: z.lon }; })();
+    const g = el("g", { class: `mk ${d.exposure ? "" : "zero"}`, "data-d": d.id, tabindex: 0, role: "button", "aria-label": d.title });
+    const r1 = el("circle", { r: 15, class: "ring" }, g), r2 = el("circle", { r: 15, class: "ring b" }, g), dot = el("circle", { r: 3.5, class: "dot" }, g);
+    const chip = el("g", { class: "chip" }, g), rect = el("rect", { rx: 6, height: 22 }, chip), t1 = el("text", {}, chip), t2 = el("text", { class: "v" }, chip);
+    t1.textContent = short(d.title); t2.textContent = d.exposure ? inr(d.exposure) : "watch";
+    items.push({ n: g, u: () => {
+      const [x, y] = P(anchor.lat, anchor.lon);
+      [r1, r2, dot].forEach((c) => { c.setAttribute("cx", x); c.setAttribute("cy", y); });
+      const w1 = t1.getComputedTextLength(), w2 = t2.getComputedTextLength(), w = w1 + w2 + 26, left = x + w + 20 > (wrap.clientWidth - 60);
+      const cx = left ? x - 14 - w : x + 14;
+      rect.setAttribute("x", cx); rect.setAttribute("y", y - 11); rect.setAttribute("width", w);
+      t1.setAttribute("x", cx + 9); t1.setAttribute("y", y + 4); t2.setAttribute("x", cx + 17 + w1); t2.setAttribute("y", y + 4);
+    } });
+  }
+  update();
+  applySel(false);
+}
+function update() { for (const it of items) it.u(it.n); }
+let flight = null;
+function flyTo(target, ms = 1000) {
+  const from = { ...cam }, t0 = performance.now();
+  flight = (now) => {
+    const k = Math.min(1, (now - t0) / ms), e = 1 - Math.pow(1 - k, 4);
+    cam = { s: from.s + (target.s - from.s) * e, tx: from.tx + (target.tx - from.tx) * e, ty: from.ty + (target.ty - from.ty) * e };
+    update();
+    if (k >= 1) flight = null;
+  };
+}
+function zoomBy(f) {
+  const r = wrap.getBoundingClientRect(), cx = r.width / 2, cy = r.height / 2;
+  const s = Math.max(1, Math.min(4, cam.s * f));
+  flyTo({ s, tx: cx - ((cx - cam.tx) / cam.s) * s, ty: cy - ((cy - cam.ty) / cam.s) * s }, 450);
+}
+const t0 = performance.now();
+function frame(now) {
+  if (flight) flight(now);
+  const dt = (now - t0) / 1000;
+  for (const T of trucks) {
+    const L = lanes[T.s.zone]; if (!L) continue;
+    const stuck = T.s.status === "at risk" || (chaos && T.s.carrier === "C2");
+    const [x, y] = L.at(Math.min(0.985, T.s.progress + (stuck ? 0 : dt * 0.0035)));
+    T.node.setAttribute("cx", x.toFixed(1)); T.node.setAttribute("cy", y.toFixed(1));
+  }
+  requestAnimationFrame(frame);
+}
+function applySel(fly = true) {
+  const d = C.disruptions.find((x) => x.id === sel);
+  const hot = new Set(d ? mine(d).map((s) => s.id) : role === "south" ? C.shipments.filter(ROLE_SCOPE.south).map((s) => s.id) : []);
+  const hz = new Set([...hot].map((id) => shipOf(id).zone));
+  world.classList.toggle("dim", hot.size > 0);
+  world.querySelectorAll(".lane").forEach((n) => n.classList.toggle("hot", hz.has(n.dataset.z)));
+  world.querySelectorAll(".city,.cityl").forEach((n) => n.classList.toggle("hot", hz.has(n.dataset.z)));
+  world.querySelectorAll(".mk").forEach((n) => { n.classList.toggle("hot", !d || n.dataset.d === d.id); n.classList.toggle("sel", d && n.dataset.d === d.id); });
+  trucks.forEach((T) => T.node.classList.toggle("hot", hot.has(T.s.id)));
+  const r = wrap.getBoundingClientRect();
+  if (fly && r.width > 0) {
+    if (d) {
+      const ll = [...hz].flatMap((z) => [zoneOf(z), dcOf(zoneOf(z).dc)]).concat(d.lat ? [{ lat: d.lat, lon: d.lon }] : []);
+      const pts = ll.map((p) => P0(p.lat, p.lon)), xs = pts.map((p) => p[0]), ys = pts.map((p) => p[1]);
+      const bw = Math.max(120, Math.max(...xs) - Math.min(...xs)), bh = Math.max(120, Math.max(...ys) - Math.min(...ys));
+      const s = Math.min(2.6, Math.max(1, Math.min((r.width - 180) / bw, (r.height - 200) / bh)));
+      const cx = (Math.max(...xs) + Math.min(...xs)) / 2, cy = (Math.max(...ys) + Math.min(...ys)) / 2;
+      flyTo({ s, tx: r.width / 2 - cx * s, ty: r.height / 2 + 24 - cy * s });
+    } else flyTo({ s: 1, tx: 0, ty: 0 });
+  }
+  document.getElementById("cap").innerHTML = d ? `<small>${d.id} · ${d.kind} · since ${d.started}</small><b>${esc(d.title)}</b><span>${hot.size} trucks lit${role === "south" ? " in your zone" : ""}</span>`
+    : role === "south" ? `<small>Dispatcher, South</small><b>Hyderabad DC lanes</b><span>Other zones are hidden by your role</span>` : `<small>${esc(C.customer)} · live</small><b>All India</b><span>Hover a truck or a warehouse; click an incident</span>`;
+}
+/* hover cards */
+const tip = document.getElementById("tip");
+wrap.addEventListener("pointermove", (e) => {
+  const t = e.target.closest(".truck"), dc = e.target.closest(".dc");
+  if (!t && !dc) { tip.classList.remove("on"); return; }
+  const r = wrap.getBoundingClientRect();
+  if (t) {
+    const s = shipOf(t.dataset.id);
+    if (!ROLE_SCOPE[role](s)) { tip.classList.remove("on"); return; }
+    tip.innerHTML = `<b>${s.id} · ${esc(s.customer)}</b><div><span>From</span><span>${esc(dcOf(s.dc).city.split(" (")[0])} DC</span></div><div><span>Carrier</span><span>${esc(carrierOf(s.carrier).name)}</span></div><div><span>Goods</span><span class="num">${inr(s.value)} · ${s.cases} cases</span></div><div><span>ETA</span><span>${day(s.eta)}, ${hhmm(s.eta)}</span></div><div><span>Status</span><span style="color:var(--${s.status === "on time" ? "ok" : s.status === "watch" ? "watch" : "risk"})">${s.status}</span></div>`;
+  } else {
+    const d = dcOf(dc.dataset.dc), out = C.shipments.filter((s) => s.dc === d.id && ROLE_SCOPE[role](s));
+    tip.innerHTML = `<b>${esc(d.city)} DC</b><div><span>Trucks out</span><span class="num">${out.length}</span></div><div><span>Goods moving</span><span class="num">${inr(out.reduce((a, s) => a + s.value, 0))}</span></div><div><span>At risk</span><span class="num">${out.filter((s) => s.status === "at risk").length} trucks</span></div><div><span>Cities served</span><span>${C.zones.filter((z) => z.dc === d.id).length}</span></div>`;
+  }
+  tip.style.left = Math.min(r.width - 240, e.clientX - r.left + 14) + "px";
+  tip.style.top = Math.min(r.height - 150, e.clientY - r.top + 14) + "px";
+  tip.classList.add("on");
+});
+wrap.addEventListener("pointerleave", () => tip.classList.remove("on"));
+
+/* ---------- rail and brief ---------- */
+function kpis() {
+  const ships = C.shipments.filter(ROLE_SCOPE[role]), ds = visible();
+  document.getElementById("kpis").innerHTML = [[inr(ships.reduce((a, s) => a + s.value, 0)), `moving · ${ships.length} trucks`], [ships.filter((s) => s.status === "at risk").length, "trucks at risk"], [inr(ds.reduce((a, d) => a + share(d, mine(d)), 0)), "at risk today", "r"]]
+    .map(([v, l, c]) => `<div class="kpi ${c ?? ""}"><b class="num">${v}</b><span>${l}</span></div>`).join("");
+  document.getElementById("ct").textContent = ds.filter((d) => !approved.has(d.id)).length;
+}
+function rail() {
+  const ds = visible();
+  document.getElementById("rail").innerHTML = `<div class="rh"><b>Needs attention</b><span>ranked by money at risk</span></div>` + ds.map((d) => {
+    const ships = mine(d), ex = share(d, ships);
+    return `<button class="card" data-d="${d.id}" style="--c:${KC[d.kind]}"><span class="k">${d.kind} · ${d.started}</span><span class="x num ${ex ? "" : "z"}">${ex ? inr(ex) : "₹0"}</span>
+      <span class="t">${esc(d.title)}</span><span class="m">${ships.length} shipments · ${inr(ships.reduce((a, s) => a + s.value, 0))} moving</span>
+      ${approved.has(d.id) ? `<span class="st">Plan approved · ${approved.get(d.id)}</span>` : ""}</button>`;
+  }).join("") + `<div class="railfoot">Exposure comes from the late-delivery and fill-rate clauses in each customer's contract. Anything that moves more than ₹5 L of goods waits for a person.</div>`;
+}
+function chain(d, ships) {
+  const dcs = [...new Set(ships.map((s) => s.dc))].map(dcOf), cars = [...new Set(ships.map((s) => s.carrier))].map(carrierOf);
+  const cities = [...new Set(ships.map((s) => s.zone))].map(zoneOf), custs = new Set(ships.map((s) => s.customer.split(" (")[0]));
+  const first = d.kind === "Supplier" ? ["Supplier", supOf(d.supplier)?.name, "5 days late"] : d.kind === "Carrier" ? ["Carrier", carrierOf(d.carrier).name, "strike in UP"] : d.kind === "Facility" ? ["Facility", "Kolkata DC dock 2", "loading at 40%"] : ["Event", short(d.title), "since " + d.started];
+  const nodes = [first, ["Warehouse", dcs.map((x) => x.city.split(" (")[0]).join(", ") || "none", `${dcs.length} DC`], ["Carriers", cars.map((c) => c.name.split(" ")[0]).join(", ") || "none", `${ships.length} trucks`], ["Cities", cities.slice(0, 2).map((c) => c.city).join(", ") + (cities.length > 2 ? ` +${cities.length - 2}` : ""), `${cities.length} cities`], ["Customers", `${custs.size} retailers`, inr(ships.reduce((a, s) => a + s.value, 0))]];
+  return nodes.map(([k, b, s], i) => `<div class="node ${i ? "" : "src"}"><small>${k}</small><b>${esc(b)}</b><span>${esc(s)}</span></div>`).join('<span class="link"></span>');
+}
+function brief() {
+  const d = C.disruptions.find((x) => x.id === sel), box = document.getElementById("brief");
+  if (!d) { box.innerHTML = ""; return; }
+  const ships = mine(d), hidden = d.shipments.length - ships.length, val = ships.reduce((a, s) => a + s.value, 0), ex = share(d, ships);
+  box.innerHTML = `<div class="bin">
+    <div class="bx"><div class="k"><span class="kind">${d.kind}</span><span>${d.id}</span><span>since ${d.started}</span></div><button class="close" id="close" aria-label="Close the brief">&times;</button></div>
+    <h2>${esc(d.title)}</h2><p class="lead">${esc(d.detail)}</p>
+    <div class="money"><div class="h"><b class="num">${inr(ex)}</b><span>at risk${role === "south" ? " in your zone" : ""}</span></div><div><b class="num">${inr(val)}</b><span>goods on affected trucks</span></div><div><b class="num">${ships.length}</b><span>shipments${hidden ? ` · ${hidden} hidden` : ""}</span></div></div>
+    <section class="sec"><h3><span>What it touches</span></h3><div class="chain">${chain(d, ships)}</div></section>
+    <section class="sec"><h3><span>How the agent got there</span><span>${(d.agent.ms / 1000).toFixed(1)} s · ${d.agent.tokens.toLocaleString("en-IN")} tokens · ₹0</span></h3>
+      <div class="agent">${d.agent.steps.map((s, i) => `<div><i>${String(i + 1).padStart(2, "0")}</i><span>${esc(s)}</span><em>${["graph", "graph", "contract", "math", "plan"][i]}</em></div>`).join("")}</div>
+      <div class="quote"><b>${esc(d.clause.id)} · from the customer contract</b>${esc(d.clause.text)}</div></section>
+    <section class="sec"><h3><span>What to do</span><span>over ₹5 L needs approval</span></h3>${d.playbooks.map((p) => {
+      const k = d.id + p.id, done = approved.get(k);
+      return `<div class="pb"><b>${esc(p.title)}</b><span>${esc(p.impact)}</span><div class="n">${p.cost ? `<span>costs ${inr(p.cost)}</span>` : ""}${p.saves ? `<em>saves ${inr(p.saves)}</em>` : ""}</div>
+        ${p.needsApproval && !done ? `<span class="lk">moves more than ₹5 L of goods</span>` : ""}
+        <button class="${done ? "done" : p.needsApproval ? "need" : ""}" data-pb="${k}" data-d="${d.id}" data-t="${esc(p.title)}">${done ? "Done" : p.needsApproval ? "Approve" : "Run"}</button>
+        ${done ? `<span class="au">${esc(done)} · written to the ERP · audit trail updated</span>` : ""}</div>`;
+    }).join("")}</section>
+    <section class="sec"><h3><span>Shipments</span><span>${ships.length} of ${d.shipments.length}</span></h3><div class="tw"><table>
+      <thead><tr><th>Shipment</th><th>Customer</th><th>Carrier</th><th>Driver</th><th>Bank</th><th class="r">Goods</th></tr></thead><tbody>
+      ${ships.slice(0, 10).map((s) => { const c = carrierOf(s.carrier), ph = mask(c.contact, role, "phone"), bk = mask(c.bank, role, "bank");
+        return `<tr><td><span class="id">${s.id}</span></td><td>${esc(s.customer)}</td><td>${esc(c.name.split(" ")[0])}</td><td>${ph.includes("•") ? '<span class="mask">masked</span>' : ph}</td><td>${bk.includes("•") ? '<span class="mask">masked</span>' : bk}</td><td class="r num">${inr(s.value)}</td></tr>`; }).join("")}
+      ${ships.length > 10 ? `<tr><td colspan="6" style="color:var(--mut)">and ${ships.length - 10} more</td></tr>` : ""}
+      ${hidden ? `<tr class="hid"><td colspan="6">${hidden} shipments outside your zone are hidden by your role</td></tr>` : ""}
+      </tbody></table></div></section></div>`;
+  box.scrollTop = 0;
+}
+let opener = null; // the incident the brief was opened from, so focus can go back to it
+function open(id) {
+  const was = sel;
+  sel = id;
+  setView("map");
+  document.getElementById("v-map").classList.toggle("briefing", !!id);
+  brief();
+  // keyboard and screen-reader users land in the brief, and return to the incident they came from
+  if (id) { opener = id; setTimeout(() => document.getElementById("close")?.focus({ preventScroll: true }), 380); }
+  else if (was) setTimeout(() => (document.querySelector(`.card[data-d="${opener ?? was}"]`) ?? document.getElementById("rail"))?.focus({ preventScroll: true }), 380);
+  // the map column narrows while the brief opens; frame the incident once it has settled
+  setTimeout(() => { drawMap(); applySel(true); }, id ? 560 : 560);
+}
+/* ---------- other views ---------- */
+function incidents() {
+  const ds = visible(), max = Math.max(...ds.map((d) => share(d, mine(d))), 1);
+  document.getElementById("v-inc").innerHTML = `<h1>Incidents</h1><p class="sub">${ds.length} open today, ranked by money at risk. Click one to see it on the map with its brief.</p><div style="margin-top:18px">` +
+    ds.map((d, i) => { const ex = share(d, mine(d)); return `<button class="it" data-open="${d.id}"><i>${String(i + 1).padStart(2, "0")}</i><span><b>${esc(d.title)}</b><small>${d.kind} · ${mine(d).length} shipments · ${esc(d.clause.id)}${approved.has(d.id) ? " · plan approved" : ""}</small></span><span class="bar"><span style="width:${(ex / max) * 100}%"></span></span><span class="when"><small>since ${d.started}</small></span><em class="num">${ex ? inr(ex) : "₹0"}</em></button>`; }).join("") + `</div>`;
+}
+function health() {
+  const fs = C.health.feeds.map((f) => { const ok = chaos && /Carrier|ERP/.test(f.name) ? 0.7 : f.ok; return `<div class="feed"><b>${esc(f.name)}</b><div class="pct num ${ok < 0.8 ? "b" : ok < 0.97 ? "w" : ""}">${(ok * 100).toFixed(1)}%</div><span>last ${f.last}${chaos && /Carrier/.test(f.name) ? " · circuit open, serving cached ETAs" : f.note ? " · " + esc(f.note) : ""}</span></div>`; }).join("");
+  const rows = C.health.dead.map((r) => `<div class="dlr ${fixed.has(r.id) ? "ok" : ""}"><span class="id">${r.id} · ${r.at}</span><b>${esc(r.feed)}</b><code title="${esc(r.row)}">${esc(r.row)}</code><span class="fx">${esc(r.reason)} → ${esc(r.fix)}</span><button data-fix="${r.id}">${fixed.has(r.id) ? "Replayed" : "Fix and replay"}</button></div>`).join("");
+  document.getElementById("v-health").innerHTML = `<h1>Data health</h1><p class="sub">Every feed into the tower, how much of it got through, and the rows that did not. Fix a row and replay it; nothing is dropped silently.</p><div class="grid">${fs}</div>
+    <div class="dl"><h2>Dead letters · ${waiting()} waiting${chaos ? " · 41 from the malformed ERP file during the outage simulation" : ""}</h2>${rows}</div>`;
+}
+function auditView() {
+  document.getElementById("v-audit").innerHTML = `<h1>Audit trail</h1><p class="sub">Every action by a person, the agent or the system, newest first. Written once, never edited.</p><div class="au2" style="margin-top:16px">${audit.map((a) => `<div class="ar ${a.new ? "new" : ""}"><time>${a.t}</time><span>${esc(a.who)}</span><b>${esc(a.what)}</b></div>`).join("")}</div>`;
+}
+function setView(v) {
+  document.querySelectorAll("#tabs button").forEach((b) => b.setAttribute("aria-selected", b.dataset.v === v));
+  document.querySelectorAll(".view").forEach((s) => s.classList.toggle("on", s.id === "v-" + v));
+  if (v === "inc") incidents(); if (v === "health") health(); if (v === "audit") auditView();
+}
+// The outage state shows wherever you are: a badge on Data health and a banner on the map.
+const waiting = () => C.health.dead.length - fixed.size + (chaos ? 41 : 0);
+function outage() {
+  document.getElementById("app").classList.toggle("outage", chaos);
+  document.getElementById("dlct").textContent = waiting();
+  const stale = C.shipments.filter((s) => s.carrier === "C2" && ROLE_SCOPE[role](s)).length;
+  document.getElementById("banner").innerHTML = chaos
+    ? `<b>Outage simulation</b><span>30% of carrier API calls failing · ERP file malformed · ${stale} Ganga Freight trucks on cached ETAs · ${waiting()} rows waiting in dead letters</span><button id="see-health">See data health</button>`
+    : "";
+}
+function render() { kpis(); rail(); brief(); applySel(false); outage(); }
+
+/* ---------- wiring ---------- */
+const AV = { vp: "#253041", south: "#1f4fa8", fin: "#1d6b4a" };
+document.getElementById("role").innerHTML = C.roles.map((r) => `<option value="${r.id}">${esc(r.name)} · ${esc(r.title)}</option>`).join("");
+const setAv = () => { const r = me(); const a = document.getElementById("av"); a.textContent = r.name.split(" ").map((x) => x[0]).join(""); a.style.background = AV[r.id]; };
+document.getElementById("role").addEventListener("change", (e) => { role = e.target.value; setAv(); if (sel && !visible().find((d) => d.id === sel)) { sel = null; document.getElementById("v-map").classList.remove("briefing"); } render(); applySel(true); const v = document.querySelector("#tabs [aria-selected=true]").dataset.v; if (v !== "map") setView(v); });
+document.addEventListener("click", (e) => {
+  const tab = e.target.closest("#tabs button"), card = e.target.closest(".card"), mk = e.target.closest(".mk"), pb = e.target.closest("[data-pb]"), fx = e.target.closest("[data-fix]"), op = e.target.closest("[data-open]");
+  if (tab) return setView(tab.dataset.v);
+  if (pb) { const who = `${me().name} · ${hhmm(new Date().toISOString())}`; approved.set(pb.dataset.pb, who); if (pb.classList.contains("need")) approved.set(pb.dataset.d, who); audit.unshift({ t: hhmm(new Date().toISOString()), who: me().name, what: `${pb.classList.contains("need") ? "Approved" : "Ran"}: ${pb.dataset.t} (${pb.dataset.d})`, new: true }); brief(); rail(); kpis(); return; }
+  if (fx) { fixed.add(fx.dataset.fix); audit.unshift({ t: hhmm(new Date().toISOString()), who: me().name, what: `Fixed and replayed ${fx.dataset.fix}`, new: true }); health(); outage(); return; }
+  if (e.target.closest("#close")) return open(null);
+  if (card) return open(card.dataset.d);
+  if (mk) return open(mk.dataset.d);
+  if (op) return open(op.dataset.open);
+  if (e.target.closest("#zin")) return zoomBy(1.5);
+  if (e.target.closest("#zout")) return zoomBy(1 / 1.5);
+  if (e.target.closest("#zfit")) return flyTo({ s: 1, tx: 0, ty: 0 }, 600);
+  if (e.target.closest("#out")) { chaos = !chaos; e.target.closest("#out").setAttribute("aria-pressed", chaos); trucks.forEach((T) => T.node.classList.toggle("stale", chaos && T.s.carrier === "C2")); outage(); const v = document.querySelector("#tabs [aria-selected=true]").dataset.v; if (v === "health") health(); return; }
+  if (e.target.closest("#see-health")) return setView("health");
+});
+addEventListener("keydown", (e) => { if (e.key === "Escape" && sel) open(null); });
+addEventListener("resize", () => { cam = { s: 1, tx: 0, ty: 0 }; drawMap(); applySel(!!sel); });
+setAv(); drawMap(); render(); requestAnimationFrame(frame);
+</script>
+</body>
+</html>

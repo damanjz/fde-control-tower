@@ -1,0 +1,9 @@
+[
+  {"viewport": [1440, 900]},
+  {"cookie": {"name": "ct_role", "value": "asha", "url": "http://127.0.0.1:4400/"}},
+  {"nav": "http://127.0.0.1:4400/?incident=2", "settle": 4000},
+  {"eval": "JSON.stringify({head: document.querySelector('#brief section[aria-busy] h3')?.innerText, steps: document.querySelectorAll('#brief .agent > div').length, trace: document.querySelector('#brief .trace')?.innerText, playbooks: [...document.querySelectorAll('#brief .pb > b')].map(b=>b.innerText)})"},
+  {"eval": "(() => { document.querySelector('#brief section[aria-busy] h3').scrollIntoView({block:'start'}); return 'scrolled' })()"},
+  {"wait": 500},
+  {"shot": ".shots/flows/14-triage-done-fallback.png"}
+]

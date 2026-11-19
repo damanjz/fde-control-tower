@@ -1,0 +1,24 @@
+[project]
+name = "fde-control-tower"
+version = "0.1.0"
+requires-python = ">=3.13"
+
+[tool.ruff]
+line-length = 110
+target-version = "py313"
+extend-exclude = [".design", "web"]
+
+[tool.ruff.lint]
+select = ["E", "F", "I", "UP", "B"]
+ignore = ["E501"]  # long SQL strings and format tables read better unwrapped
+
+[tool.ruff.lint.flake8-bugbear]
+extend-immutable-calls = ["fastapi.Depends", "fastapi.Query", "fastapi.Header", "fastapi.Body"]
+
+[tool.pytest.ini_options]
+markers = [
+    "db: needs the compose Postgres running (docker compose up -d db)",
+    "llm: calls the real local LLM (Ollama); skipped unless CT_LLM_TESTS=1",
+]
+filterwarnings = ["ignore::DeprecationWarning"]
+pythonpath = ["."]

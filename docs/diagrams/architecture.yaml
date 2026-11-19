@@ -1,0 +1,85 @@
+type: flow
+kicker: FDE Portfolio · 07
+title: How a disruption becomes a priced, approved action
+columns:
+  - id: feeds
+    tag: Feeds
+    title: Dirty inputs
+    points:
+      - ERP files, 3 header dialects
+      - Signed GPS webhook
+      - Carrier API and alerts feed
+      - Contract PDFs, bills of lading
+  - id: ingest
+    tag: Ingestion
+    title: Validate and dedupe
+    points:
+      - Canonical dates, amounts, ids
+      - Stale, duplicate and forged rows refused
+      - Dead letters with reason and replayable fix
+  - stack:
+      - id: db
+        tag: Store
+        title: Postgres
+        points:
+          - Shipments, GPS, disruptions
+          - Contracts as vectors and full text
+          - Append-only audit log
+      - id: impact
+        tag: No LLM
+        title: Impact engine
+        points:
+          - Penalties from the contract's own numbers
+          - Incidents ranked by exposure
+  - id: core
+    core:
+      tag: Agent loop
+      title: fusion27b:iq3
+      subtitle: Local, Rs 0 per run
+      children:
+        - id: tools
+          title: Tools
+          points:
+            - get_incident, find_affected, compute_exposure
+            - get_clause, list_options
+            - Roles and masking applied at retrieval
+        - id: checks
+          title: Honesty checks
+          style: dark
+          points:
+            - Quotes exact, figures from tools
+            - Clauses cited were fetched
+            - One retry, then the rule plan
+  - stack:
+      - id: play
+        tag: Output
+        title: Playbooks
+        points:
+          - 2 to 4 options, priced by code
+          - A mover must save more than it costs
+      - id: approve
+        tag: Person
+        title: Approval
+        points:
+          - Up to Rs 5,00,000 runs at once
+          - Above it, asha approves
+  - id: act
+    tag: Execute
+    title: Actions and outbox
+    points:
+      - One transaction, idempotent
+      - Outbox to chat webhook
+      - Audit row with before and after
+band:
+  title: Roles enforced in one scoped data layer
+  text: asha all India · kiran DC-HYD only, phones masked · meera no driver data, cannot execute
+  right: "43-case eval: rules 43/43"
+edges:
+  - {from: feeds, to: ingest}
+  - {from: ingest, to: db}
+  - {from: db, to: impact}
+  - {from: impact, to: core}
+  - {from: core, to: play}
+  - {from: play, to: approve}
+  - {from: approve, to: act}
+  - {from: core, to: band, dashed: true}

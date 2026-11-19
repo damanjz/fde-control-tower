@@ -1,0 +1,395 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Ledger with one open row</title>
+<link rel="stylesheet" href="base.css">
+<style>
+  :root { --gut: 48px; --lead: 100px; }
+  body { min-height: 100vh; }
+
+  /* Header */
+  .top { display: flex; align-items: center; gap: 32px; height: 64px; padding: 0 var(--gut); border-bottom: 1px solid var(--line); background: var(--surface); }
+  .brand { font: 600 var(--t2)/1 var(--disp); white-space: nowrap; }
+  .brand .clock { margin-left: 12px; font: 400 var(--t1)/1 var(--sans); color: var(--mut); }
+  .links { display: flex; gap: 24px; margin-left: auto; }
+  .links a { font-size: var(--t1); color: var(--soft); text-decoration: none; border-bottom: 1px solid var(--line2); padding-bottom: 1px; }
+  .links a:hover { color: var(--ink); border-color: var(--ink); }
+  .viewas { display: flex; align-items: center; gap: 12px; font-size: var(--t1); color: var(--mut); }
+  .seg { display: flex; padding: 3px; border-radius: 9px; background: var(--sunk); }
+  .seg button { height: 32px; padding: 0 14px; border-radius: 7px; font-size: var(--t1); font-weight: 600; color: var(--soft); }
+  .seg button[aria-checked="true"] { background: var(--surface); color: var(--ink); box-shadow: 0 1px 2px rgba(17,20,24,.12); }
+  .rolecap { min-width: 172px; }
+  .short { display: none; }
+
+  /* Total */
+  .wrap { max-width: 1440px; margin: 0 auto; padding: 0 var(--gut); }
+  .hero { display: flex; align-items: flex-end; gap: 32px; padding: 20px 0 16px; }
+  .total { font: 600 var(--t4)/1 var(--disp); letter-spacing: -.02em; white-space: nowrap; }
+  .lede { max-width: 560px; color: var(--soft); }
+  .lede b { color: var(--ink); font-weight: 600; }
+  .avoided { margin-left: auto; text-align: right; color: var(--saved); font-weight: 600; white-space: nowrap; }
+
+  /* Ledger */
+  .ledger { list-style: none; border-top: 1px solid var(--line2); }
+  .row { border-bottom: 1px solid var(--line); transition: background .3s var(--ease); }
+  .head { display: grid; grid-template-columns: 28px 40px minmax(0, 1fr) 22% 196px; align-items: center; gap: 16px; width: 100%; min-height: 58px; padding: 7px 0; }
+  .rank { font: 400 var(--t2)/1 var(--disp); color: var(--mut); text-align: right; }
+  .thumb { width: 40px; height: 44px; display: block; }
+  .thumb .land { fill: var(--line); stroke: var(--line2); stroke-width: .25; }
+  .thumb .lane { stroke: var(--risk); stroke-width: .9; fill: none; stroke-linecap: round; opacity: .85; }
+  .thumb .zone { fill: var(--risk); opacity: .18; }
+  .thumb .dc { fill: var(--ink); }
+  .row.done .thumb .lane { stroke: var(--saved); }
+  .row.done .thumb .zone { fill: var(--saved); }
+  .what { display: flex; flex-direction: column; gap: 2px; min-width: 0; }
+  .title { font: 600 var(--t3)/1.25 var(--disp); letter-spacing: -.01em; }
+  .meta { font-size: var(--t1); color: var(--mut); }
+  .bar { height: 8px; border-radius: 4px; background: transparent; }
+  .bar i { display: block; height: 100%; min-width: 3px; border-radius: 4px; background: var(--risk); opacity: .75; transition: background .4s var(--ease), opacity .4s; }
+  .row.done .bar i { background: var(--saved); opacity: .55; }
+  .amt { font: 600 var(--t3)/1 var(--disp); text-align: right; white-space: nowrap; }
+  .row.done .amt { color: var(--saved); }
+  .head:hover .title { text-decoration: underline; text-decoration-color: var(--line2); text-underline-offset: 4px; }
+
+  /* The open row */
+  .row.open { background: var(--surface); border-radius: var(--r); border: 1px solid var(--line2); box-shadow: 0 1px 2px rgba(17,20,24,.05), 0 12px 32px -18px rgba(17,20,24,.28); margin: 6px -17px; padding: 0 16px; position: relative; z-index: 1; }
+  .row.open .head { cursor: default; }
+  .row.open .head:hover .title { text-decoration: none; }
+  .row.open .meta { display: none; }
+  .band { display: grid; grid-template-rows: 0fr; transition: grid-template-rows .45s var(--ease); }
+  .row.open .band { grid-template-rows: 1fr; }
+  .band-in { overflow: hidden; min-height: 0; }
+  .cols { display: grid; grid-template-columns: .9fr 1.5fr .95fr; gap: 40px; padding: 0 0 18px var(--lead); }
+  .col.dec { display: flex; flex-direction: column; }
+  .col h3 { font: 600 var(--t1)/1.4 var(--sans); color: var(--mut); margin-bottom: 8px; }
+  .col p + p { margin-top: 8px; }
+  .soft { color: var(--soft); }
+  .small { font-size: var(--t1); color: var(--mut); }
+
+  .clock-box { margin-top: 16px; padding-top: 12px; border-top: 1px solid var(--line); }
+  .clock-line { display: flex; justify-content: space-between; gap: 12px; align-items: baseline; }
+  .clock-left { font-weight: 600; white-space: nowrap; }
+  .track { height: 4px; margin-top: 8px; border-radius: 2px; background: var(--sunk); overflow: hidden; }
+  .track i { display: block; height: 100%; background: var(--line2); }
+  .urgent .clock-left { color: var(--deadline); }
+  .urgent .track { background: var(--deadline-wash); }
+  .urgent .track i { background: var(--deadline); }
+
+  .ev { list-style: none; display: grid; gap: 10px; }
+  .ph { white-space: nowrap; }
+  .chip { display: inline-block; margin-right: 6px; vertical-align: 1px; font-size: var(--t1); font-weight: 600; line-height: 1; padding: 5px 8px; border-radius: 6px; background: var(--sunk); color: var(--soft); white-space: nowrap; }
+  .chip.contract { background: var(--agent-wash); color: var(--agent); }
+  .quote { color: var(--ink); }
+  cite { display: block; margin-top: 4px; font-style: normal; font-size: var(--t1); color: var(--mut); }
+
+  .act { font: 600 var(--t3)/1.25 var(--disp); letter-spacing: -.01em; }
+  .terms { display: flex; gap: 24px; margin-top: 10px; }
+  .terms div { display: flex; flex-direction: column; }
+  .terms dt { font-size: var(--t1); color: var(--mut); }
+  .terms dd { font-weight: 600; }
+  .terms .good { color: var(--saved); }
+  .gate { margin-top: 12px; padding: 8px 12px; border-radius: 8px; background: var(--sunk); font-size: var(--t1); color: var(--soft); }
+  .gate b { color: var(--ink); }
+  .go { display: flex; align-items: center; gap: 12px; margin-top: 16px; }
+  .btn.primary[disabled] { background: var(--sunk); border-color: var(--line2); color: var(--mut); cursor: not-allowed; }
+  .why { margin-top: 10px; font-size: var(--t1); color: var(--soft); }
+  .done-note { color: var(--saved); font-weight: 600; }
+
+  .agentline { margin-top: auto; padding-top: 16px; font-size: var(--t1); color: var(--mut); }
+
+  .outside { padding: 16px 0 0 calc(28px + 16px); font-size: var(--t1); color: var(--mut); }
+
+  /* Phone */
+  @media (max-width: 720px) {
+    :root { --gut: 16px; --lead: 0px; }
+    .top { flex-wrap: wrap; height: auto; padding: 12px var(--gut); gap: 8px 16px; }
+    .brand { width: 100%; }
+    .brand { order: 1; }
+    .links { order: 3; gap: 16px; margin-left: auto; }
+    .viewas { order: 2; }
+    .viewas > span:first-child, .rolecap, .full { display: none; }
+    .short { display: inline; }
+    .seg button { padding: 0 11px; }
+    .hero { flex-wrap: wrap; gap: 6px 16px; padding: 16px 0 14px; }
+    .avoided { margin-left: 0; text-align: left; width: 100%; }
+    .head { grid-template-columns: 20px minmax(0, 1fr) auto; grid-template-areas: "r t t" ". b a" ". m m"; gap: 4px 12px; padding: 12px 0; }
+    .rank { grid-area: r; align-self: baseline; }
+    .thumb { display: none; }
+    .what { display: contents; }
+    .title { grid-area: t; }
+    .meta { grid-area: m; }
+    .bar { grid-area: b; height: 6px; align-self: center; }
+    .amt { grid-area: a; }
+    .title { font-size: var(--t2); }
+    .amt { font-size: var(--t2); }
+    .row.open { margin: 8px -8px; padding: 0 8px; }
+    .cols { grid-template-columns: 1fr; gap: 16px; padding: 4px 0 14px; }
+    .col h3 { margin-bottom: 4px; }
+    .clock-box { margin-top: 10px; padding-top: 8px; }
+    .agentline { padding-top: 12px; }
+    .outside { padding-left: 32px; }
+  }
+</style>
+</head>
+<body>
+<header class="top">
+  <div class="brand">Tarangini control tower<span class="clock">Thu 13 Nov, 10:40</span></div>
+  <nav class="links" aria-label="Other views">
+    <a href="#map" title="Secondary view, not part of this mockup"><span class="full">Network map</span><span class="short">Map</span></a>
+    <a href="#health" title="Second ledger, same row pattern, not built in this mockup">Data health</a>
+  </nav>
+  <div class="viewas">
+    <span>View as</span>
+    <div class="seg" role="radiogroup" aria-label="View as" id="roles"></div>
+    <span class="rolecap" id="rolecap"></span>
+  </div>
+</header>
+
+<main class="wrap">
+  <section class="hero" aria-live="polite">
+    <div class="total num" id="total"></div>
+    <p class="lede" id="lede"></p>
+    <p class="avoided num" id="avoided"></p>
+  </section>
+  <ol class="ledger" id="ledger"></ol>
+  <p class="outside" id="outside" hidden></p>
+</main>
+
+<script src="data.js"></script>
+<script src="../india.js"></script>
+<script>
+(() => {
+  const C = window.CT2;
+  const NOW = Date.parse(C.now);
+  const GATE = 500000;
+
+  const ROLES = {
+    asha:  { name: "Asha",  cap: "VP operations, all India", scope: null, mask: false, drivers: true, canRun: true },
+    kiran: { name: "Kiran", cap: "Dispatcher, Hyderabad DC", scope: "DC-HYD", mask: true, drivers: true, canRun: true },
+    meera: { name: "Meera", cap: "Finance, read only", scope: null, mask: false, drivers: false, canRun: false },
+  };
+  const DC = { "DC-HYD": "Hyderabad", "DC-MUM": "Mumbai", "DC-DEL": "Delhi", "DC-KOL": "Kolkata" };
+  const carrier = (id) => (C.network.carriers.find((c) => c.id === id) || {}).name || id;
+
+  // Money and time
+  const inr = (n) => {
+    const s = String(Math.round(n));
+    if (s.length <= 3) return s;
+    return s.slice(0, -3).replace(/\B(?=(\d{2})+(?!\d))/g, ",") + "," + s.slice(-3);
+  };
+  const rs = (n) => "Rs " + inr(n);
+  const rsShort = (n) => n >= 1e7 ? `Rs ${(n / 1e7).toFixed(2)} Cr` : n >= 1e5 ? `Rs ${(n / 1e5).toFixed(2)} L` : rs(n);
+  const ist = (iso) => { const d = new Date(Date.parse(iso) + 330 * 60000); return String(d.getUTCHours()).padStart(2, "0") + ":" + String(d.getUTCMinutes()).padStart(2, "0"); };
+  const span = (min) => min < 60 ? `${min} min` : `${Math.floor(min / 60)} h ${min % 60} min`;
+  const esc = (s) => String(s).replace(/[&<>"]/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" }[c]));
+  const list = (a) => a.length < 2 ? a.join("") : a.slice(0, -1).join(", ") + " and " + a[a.length - 1];
+  const plural = (n, w) => `${n} ${w}${n === 1 ? "" : "s"}`;
+  const mask = (p) => { let i = 0; const digits = p.replace(/\D/g, "").length; return p.replace(/\d/g, (d) => { i++; return i <= 4 || i > digits - 2 ? d : "•"; }); };
+
+  // Lane thumbnail: India outline in degrees, x scaled for latitude
+  const P = (lon, lat) => [((lon - 68) * 0.927).toFixed(2), (37.4 - lat).toFixed(2)];
+  const outline = window.INDIA.map((ring) => {
+    const step = ring.length > 400 ? 4 : 1;
+    const pts = ring.filter((_, i) => i % step === 0);
+    return "M" + pts.map(([x, y]) => P(x, y).join(",")).join("L") + "Z";
+  }).join("");
+  const wh = (id) => C.network.warehouses.find((w) => w.id === id);
+  const zn = (id) => C.network.zones.find((z) => z.id === id);
+  function thumb(b) {
+    const i = b.incident, ch = b.chain;
+    let g = "";
+    if (i.lat != null) {
+      const [x, y] = P(i.lon, i.lat);
+      g += `<circle class="zone" cx="${x}" cy="${y}" r="${Math.max(1.2, i.radius_km / 111).toFixed(2)}"/>`;
+    }
+    const dcs = ch.warehouses.map((w) => wh(w.id));
+    if (i.kind === "supplier") {
+      const s = C.network.suppliers.find((x) => x.id === i.supplier_id);
+      const [sx, sy] = P(s.lon, s.lat);
+      dcs.forEach((d) => { const [x, y] = P(d.lon, d.lat); g += `<path class="lane" d="M${sx},${sy}L${x},${y}"/>`; });
+    } else {
+      // one lane per DC to each city it serves in this incident (from the affected shipments)
+      const pairs = new Set(b.shipments.items.map((s) => s.dc_id + "|" + s.zone_id));
+      if (!pairs.size) ch.warehouses.forEach((w) => ch.cities.forEach((c) => pairs.add(w.id + "|" + c.id)));
+      pairs.forEach((p) => {
+        const [d, z] = p.split("|"), a = wh(d), c = zn(z);
+        if (!a || !c) return;
+        const [x1, y1] = P(a.lon, a.lat), [x2, y2] = P(c.lon, c.lat);
+        g += `<path class="lane" d="M${x1},${y1}L${x2},${y2}"/>`;
+      });
+    }
+    dcs.forEach((d) => { const [x, y] = P(d.lon, d.lat); g += `<circle class="dc" cx="${x}" cy="${y}" r=".75"/>`; });
+    return `<svg class="thumb" viewBox="0 0 27.4 31" aria-hidden="true"><path class="land" d="${outline}"/>${g}</svg>`;
+  }
+
+  // One model of each incident, built from the brief
+  const items = C.incidents.slice().sort((a, b) => b.net_inr - a.net_inr).map((inc) => {
+    const b = C.briefs[inc.id], m = b.money;
+    const pb = b.playbooks.slice().sort((x, y) => (y.est_saving_inr - y.est_cost_inr) - (x.est_saving_inr - x.est_cost_inr))[0];
+    const clause = b.clauses.find((c) => c.clause_id === pb.clause_id && c.chain === pb.clause_chain) || { text: pb.clause_quote, chain: pb.clause_chain, clause_id: pb.clause_id };
+    const dcs = b.chain.warehouses.map((w) => w.id);
+    return { inc, b, m, pb, clause, dcs };
+  });
+
+  const state = { role: "asha", open: 1, done: {} };
+
+  function view() {
+    const r = ROLES[state.role];
+    return items.filter((it) => !r.scope || it.dcs.includes(r.scope));
+  }
+
+  function meta(it) {
+    const cities = it.b.chain.cities.map((c) => c.label);
+    const from = list(it.dcs.map((d) => DC[d]));
+    const to = cities.length > 3 ? `${cities.length} cities` : list(cities);
+    return `${plural(it.m.shipments, "shipment")} · ${from} ${it.dcs.length > 1 ? "DCs" : "DC"} to ${to}`;
+  }
+
+  function actText(pb) {
+    if (pb.action_type === "notify_customers") return `Notify ${pb.params.customers.length} customers now`;
+    if (pb.action_type === "update_eta") return `Send new delivery times for ${pb.shipment_ids.length} shipments`;
+    if (pb.action_type === "swap_carrier") return `Move ${pb.shipment_ids.length} shipments to ${carrier(pb.params.to_carrier)}`;
+    return pb.title;
+  }
+  function doneText(pb) {
+    if (pb.action_type === "notify_customers") return [`${pb.params.customers.length} customers notified`, "Customers told"];
+    if (pb.action_type === "update_eta") return ["new delivery times sent", "Times updated"];
+    if (pb.action_type === "swap_carrier") return [`${pb.shipment_ids.length} shipments moved to ${carrier(pb.params.to_carrier)}`, "Carrier swapped"];
+    return ["done", "Done"];
+  }
+
+  function happened(it) {
+    const { inc, m } = it;
+    let h = `<h3>What happened</h3><p>${esc(inc.detail)}</p>`;
+    h += `<p class="soft">${m.fill_inr > m.late_inr ? "Short-delivery" : "Late-delivery"} credit customers can claim under their contracts.</p>`;
+    if (m.notify_deadline) {
+      const left = Math.round((Date.parse(m.notify_deadline) - NOW) / 60000);
+      const total = (Date.parse(m.notify_deadline) - Date.parse(inc.started_at)) / 60000;
+      const urgent = left <= 60;
+      h += `<div class="clock-box${urgent ? " urgent" : ""}">
+        <div class="clock-line"><span>Waived if customers hear by ${ist(m.notify_deadline)}</span><span class="clock-left num">${span(left)} left</span></div>
+        <div class="track"><i style="width:${(100 * (1 - left / total)).toFixed(1)}%"></i></div></div>`;
+    } else {
+      const why = { carrier: "A strike", facility: "A warehouse fault", supplier: "A supplier delay" }[inc.kind] || "This";
+      h += `<p class="small">${why} is not a weather event, so no contract waiver applies.</p>`;
+    }
+    return h;
+  }
+
+  function evidence(it) {
+    const { inc, b, m, clause } = it, r = ROLES[state.role];
+    const val = rs(m.value_inr), n = plural(m.shipments, "shipment");
+    let ship;
+    if (inc.kind === "weather") ship = `${n} worth ${val} run through the affected area.`;
+    else if (inc.kind === "carrier") ship = `${n} worth ${val} are booked with ${carrier(inc.carrier_id)} into ${list(inc.states)}.`;
+    else if (inc.kind === "facility") ship = `${n} worth ${val} were due out of ${DC[inc.dc_id]} DC before the repair.`;
+    else {
+      const s = C.network.suppliers.find((x) => x.id === inc.supplier_id);
+      ship = `${n} worth ${val} carry ${s.category.toLowerCase()} lines that run short before ${s.name} stock lands.`;
+    }
+    const drv = b.shipments.items.find((s) => s.driver_phone);
+    if (drv) ship += r.drivers ? ` One driver on the lane: ${esc(drv.driver_name)}, <span class="num ph">${esc(r.mask ? mask(drv.driver_phone) : drv.driver_phone)}</span>.` : " Driver details are hidden for finance.";
+    const price = m.late_inr >= m.fill_inr
+      ? `Priced shipment by shipment by code, not by the model: up to ${plural(m.max_days_late, "day")} late against each customer's own contract.`
+      : `Priced shipment by shipment by code, not by the model: orders filled short against each customer's own contract.`;
+    const sec = clause.clause_id.replace("MSA-", "");
+    const src = `${esc(clause.chain)} master supply agreement, section ${sec}${clause.heading ? " (" + esc(clause.heading.toLowerCase()) + ")" : ""}${clause.page ? ", page " + clause.page : ""}`;
+    return `<h3>Evidence</h3><ul class="ev">
+      <li><span class="chip">Shipments</span>${ship}</li>
+      <li><span class="chip">Pricing engine</span>${price}</li>
+      <li><span class="chip contract">Contract</span><span class="quote">“${esc(clause.text)}”</span><cite>${src}</cite></li>
+    </ul>`;
+  }
+
+  function decision(it) {
+    const { pb, inc } = it, r = ROLES[state.role], d = state.done[inc.id];
+    let h = `<h3>Decision</h3><p class="act">${esc(actText(pb))}</p>`;
+    const full = pb.est_saving_inr >= it.m.net_inr - 1;
+    h += `<dl class="terms"><div><dt>Cost</dt><dd class="num">${pb.est_cost_inr ? rs(pb.est_cost_inr) : "Nothing"}</dd></div>`;
+    if (pb.est_saving_inr > 0) h += `<div><dt>Saving</dt><dd class="good num">${full ? "All of it" : rs(pb.est_saving_inr)}</dd></div>`;
+    h += `</dl>`;
+    if (pb.est_saving_inr <= 0) {
+      const why = pb.source === "fallback" ? "Chosen by rule from the priced options, because the agent's plan failed a check. The credits still apply." : esc(pb.rationale);
+      h += `<p class="why">${why}</p>`;
+    }
+    const gated = pb.goods_value_inr > GATE;
+    if (d) return h + `<p class="go done-note">Approved by ${d.by} at 10:40: ${esc(doneText(pb)[0])}.</p>`;
+    if (gated) h += `<p class="gate">Moves <b class="num">${rsShort(pb.goods_value_inr)}</b> of goods, so it needs Asha's approval.</p>`;
+    if (!r.canRun) return h + `<div class="go"><button class="btn primary" disabled>Approve</button><span class="small">Finance cannot execute.</span></div>`;
+    if (gated && state.role !== "asha") return h + `<div class="go"><button class="btn primary" disabled>Approve</button><span class="small">Sent to Asha.</span></div>`;
+    return h + `<div class="go"><button class="btn primary" data-approve="${inc.id}">${gated ? "Approve as Asha" : "Approve"}</button></div>`;
+  }
+
+  function agentLine(it) {
+    const a = it.b.agent;
+    const rej = a.steps.filter((s) => /^rejected/.test(s.result_summary)).map((s) =>
+      /not returned by get_clause/.test(s.result_summary) ? "cited a clause it had not fetched" : "proposed the same action twice");
+    const tokens = inr(a.prompt_tokens + a.completion_tokens);
+    let s = `Agent run: ${a.model.split(":")[0]} on this machine, ${plural(a.llm_calls, "model call")}, <span class="ph">${(a.ms / 1000).toFixed(1)} s</span>, <span class="ph">${tokens} tokens</span>, <span class="ph">Rs 0</span>. `;
+    if (a.outcome === "fallback") s += `Code rejected its plan (${rej[0]}), so a rule plan stands in.`;
+    else if (rej.length) s += `Code rejected one draft (${rej[0]}); the agent corrected it.`;
+    else s += "Code checked every figure and clause.";
+    return s;
+  }
+
+  function row(it, idx, max) {
+    const { inc, m, pb } = it, d = state.done[inc.id], open = state.open === inc.id;
+    const right = d ? (pb.est_saving_inr > 0 ? `${rsShort(pb.est_saving_inr)} avoided` : doneText(pb)[1]) : rs(m.net_inr);
+    const sub = d ? `Approved by ${d.by} · ${doneText(pb)[0]}` : meta(it);
+    return `<li class="row${open ? " open" : ""}${d ? " done" : ""}" data-id="${inc.id}">
+      <button class="head" aria-expanded="${open}" data-open="${inc.id}">
+        <span class="rank num">${idx + 1}</span>${thumb(it.b)}
+        <span class="what"><span class="title">${esc(inc.title)}</span><span class="meta">${esc(sub)}</span></span>
+        <span class="bar"><i style="width:${(100 * m.net_inr / max).toFixed(1)}%"></i></span>
+        <span class="amt num">${right}</span>
+      </button>
+      <div class="band"><div class="band-in">${open ? body(it) : ""}</div></div>
+    </li>`;
+  }
+  function body(it) {
+    return `<div class="cols"><section class="col">${happened(it)}</section><section class="col">${evidence(it)}</section><section class="col dec">${decision(it)}<p class="agentline">${agentLine(it)}</p></section></div>`;
+  }
+
+  function render() {
+    const r = ROLES[state.role], v = view();
+    const max = Math.max(...items.map((x) => x.m.net_inr));
+    if (!v.some((x) => x.inc.id === state.open)) state.open = (v.find((x) => !state.done[x.inc.id]) || {}).inc?.id;
+    document.getElementById("ledger").innerHTML = v.map((it, i) => row(it, i, max)).join("");
+    const atRisk = v.reduce((s, x) => s + x.m.net_inr - (state.done[x.inc.id] ? x.pb.est_saving_inr : 0), 0);
+    const saved = v.reduce((s, x) => s + (state.done[x.inc.id] ? x.pb.est_saving_inr : 0), 0);
+    const nDone = v.filter((x) => state.done[x.inc.id]).length;
+    document.getElementById("total").textContent = atRisk < 1 ? "All clear" : rs(atRisk);
+    document.getElementById("lede").innerHTML = atRisk < 1 ? `Every disruption ${r.scope ? "on Hyderabad DC lanes" : "this morning"} has an approved fix.` : `at risk ${r.scope ? "on Hyderabad DC lanes" : "this morning"} across ${plural(v.length, "disruption")}. An AI agent priced each one from customer contracts and proposes a fix. <b>A person approves it.</b>`;
+    document.getElementById("avoided").textContent = saved > 0 ? `${rsShort(saved)} avoided by ${plural(nDone, "approval")}` : "";
+    const out = document.getElementById("outside");
+    out.hidden = !r.scope;
+    out.textContent = r.scope ? `${plural(items.length - v.length, "more disruption")} sit outside Hyderabad DC and are not shown to Kiran.` : "";
+    document.getElementById("roles").innerHTML = Object.entries(ROLES).map(([k, x]) => `<button role="radio" aria-checked="${k === state.role}" data-role="${k}">${x.name}</button>`).join("");
+    document.getElementById("rolecap").textContent = r.cap;
+  }
+
+  document.addEventListener("click", (e) => {
+    const t = e.target.closest("[data-approve],[data-open],[data-role]");
+    if (!t) return;
+    if (t.dataset.role) { state.role = t.dataset.role; render(); return; }
+    if (t.dataset.open) { const id = +t.dataset.open; if (id !== state.open) { state.open = id; render(); } return; }
+    const id = +t.dataset.approve;
+    state.done[id] = { by: ROLES[state.role].name };
+    const li = t.closest(".row");
+    li.classList.remove("open");
+    state.open = null;
+    render();
+    // keep one row open: after the collapse, open the next row that still needs a decision
+    setTimeout(() => {
+      const next = view().find((x) => !state.done[x.inc.id]);
+      if (next && state.open == null) { state.open = next.inc.id; render(); }
+    }, 900);
+  });
+
+  render();
+})();
+</script>
+</body>
+</html>

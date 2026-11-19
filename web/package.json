@@ -1,0 +1,28 @@
+{
+  "name": "tarangini-control-tower-web",
+  "version": "0.3.0",
+  "private": true,
+  "description": "Milestone 3: the control tower UI on the real API (Next.js App Router, TypeScript)",
+  "scripts": {
+    "dev": "next dev -H 127.0.0.1 -p 4400",
+    "build": "next build",
+    "start": "next start -H 127.0.0.1 -p 4400",
+    "lint": "eslint .",
+    "typecheck": "tsc --noEmit"
+  },
+  "dependencies": {
+    "@fontsource-variable/anek-latin": "5.3.0",
+    "@fontsource-variable/hanken-grotesk": "5.3.0",
+    "next": "16.4.6",
+    "react": "19.3.1",
+    "react-dom": "19.3.1"
+  },
+  "devDependencies": {
+    "@types/node": "24.19.2",
+    "@types/react": "19.3.0",
+    "@types/react-dom": "19.3.0",
+    "eslint": "9.39.5",
+    "eslint-config-next": "16.4.6",
+    "typescript": "5.9.3"
+  }
+}

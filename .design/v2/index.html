@@ -1,0 +1,39 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Control tower remake: three layouts</title>
+<link rel="stylesheet" href="base.css">
+<style>
+  main { max-width: 760px; margin: 0 auto; padding: 56px 16px; }
+  h1 { font: 600 var(--t3)/1.3 var(--disp); }
+  p.lead { color: var(--soft); margin-top: 8px; }
+  ol { list-style: none; margin-top: 32px; display: grid; gap: 12px; }
+  a.card { display: block; padding: 20px 24px; background: var(--surface); border: 1px solid var(--line); border-radius: var(--r); text-decoration: none; }
+  a.card:hover { border-color: var(--agent); }
+  a.card b { font: 600 var(--t3)/1.3 var(--disp); display: block; }
+  a.card span { color: var(--soft); display: block; margin-top: 6px; }
+  .note { color: var(--mut); font-size: var(--t1); margin-top: 24px; }
+</style>
+</head>
+<body>
+<main>
+  <h1>Control tower remake: pick a layout</h1>
+  <p class="lead">Three structures, one shared neutral look. Colour and type come after the pick. All numbers and contract text are the real demo data.</p>
+  <ol>
+    <li><a class="card" href="a-case.html"><b>A. Single case</b><span>One incident fills the page: caught, priced, contract, decision. The approve card stays in view. A strip of the six incidents on top.</span></a></li>
+    <li><a class="card" href="b-ledger.html"><b>B. Ledger</b><span>All six incidents ranked by rupees. One row open at a time: what happened, the evidence, the decision.</span></a></li>
+    <li><a class="card" href="c-map.html"><b>C. Map-led</b><span>A clean India map as the hero, with the decision docked on the right. Pick a pin to swap the incident.</span></a></li>
+  </ol>
+  <p class="note">Try: Approve, switching incidents, and "View as" Kiran or Meera. Best at 1440 px wide; phone layouts work too.</p>
+  <h1 style="margin-top:56px">Round 2: layout A in three looks</h1>
+  <p class="lead">Same layout, same data. Pick the look.</p>
+  <ol>
+    <li><a class="card" href="a-dusk.html"><b>1. Dusk room</b><span>Dark warm umber, matches the portfolio. Amber appears only on rupee figures. Red Hat type.</span></a></li>
+    <li><a class="card" href="a-morning.html"><b>2. Morning desk</b><span>Light celadon, flat white, 1 px lines. Contract quotes in a book face. Every rupee figure has bold digits and a light unit.</span></a></li>
+    <li><a class="card" href="a-indigo.html"><b>3. Sheet on indigo</b><span>Evidence on a paper sheet, the decision on the indigo side. The selected incident tab joins the sheet. Anek Latin type. The advisor's pick.</span></a></li>
+  </ol>
+</main>
+</body>
+</html>

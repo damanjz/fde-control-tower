@@ -1,0 +1,17 @@
+/* Shared base for the concepts: reset and the mock bar. Each concept brings its own look. */
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+html { -webkit-text-size-adjust: 100%; }
+button { font: inherit; color: inherit; background: none; border: 0; cursor: pointer; text-align: left; }
+a { color: inherit; }
+.num { font-variant-numeric: tabular-nums; }
+:root { --bar: 28px; --ease: cubic-bezier(0.16, 1, 0.3, 1); }
+body { padding-top: var(--bar); }
+.mockbar { position: fixed; inset: 0 0 auto 0; height: var(--bar); z-index: 100; display: flex; align-items: center; gap: 14px; padding: 0 12px; background: #000; color: #bbb; font: 12px/1 "Segoe UI", system-ui, sans-serif; white-space: nowrap; overflow: hidden; }
+.mockbar b { color: #fff; font-weight: 600; }
+.mockbar span { overflow: hidden; text-overflow: ellipsis; }
+.mockbar nav { margin-left: auto; display: flex; gap: 2px; }
+.mockbar a { text-decoration: none; padding: 4px 9px; border-radius: 3px; }
+.mockbar a.on { background: #fff; color: #000; }
+.mockbar a:hover:not(.on) { background: #222; }
+@media (max-width: 700px) { .mockbar span { display: none; } }
+@media (prefers-reduced-motion: reduce) { *, *::before, *::after { transition: none !important; animation: none !important; } }

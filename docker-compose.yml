@@ -1,0 +1,24 @@
+name: fde-ct
+
+services:
+  db:
+    image: pgvector/pgvector:pg17
+    environment:
+      POSTGRES_USER: ct
+      POSTGRES_PASSWORD: ${CT_DB_PASSWORD:?set CT_DB_PASSWORD in .env (copy .env.example)}
+      POSTGRES_DB: ct
+    ports:
+      - "127.0.0.1:5436:5432"  # loopback only: never expose the database to the network
+    volumes:
+      - ct_pgdata:/var/lib/postgresql/data
+      - ./db/schema.sql:/docker-entrypoint-initdb.d/01-schema.sql:ro
+      - ./db/migrations/002_milestone2.sql:/docker-entrypoint-initdb.d/02-milestone2.sql:ro
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ct -d ct"]
+      interval: 3s
+      timeout: 3s
+      retries: 20
+
+volumes:
+  ct_pgdata:
+    name: ct_pgdata

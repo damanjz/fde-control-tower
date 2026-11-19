@@ -1,0 +1,597 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Control tower, map-led</title>
+<link rel="stylesheet" href="base.css">
+<style>
+  html, body { height: 100%; }
+  body { display: flex; flex-direction: column; overflow: hidden; }
+
+  /* header */
+  .top { flex: none; height: 56px; display: flex; align-items: center; gap: 24px; padding: 0 24px; background: var(--surface); border-bottom: 1px solid var(--line); }
+  .brand { font-weight: 600; white-space: nowrap; }
+  .clock { font-size: var(--t1); color: var(--mut); white-space: nowrap; }
+  .top .grow { flex: 1; }
+  .hl { font-size: var(--t1); color: var(--mut); text-decoration: none; white-space: nowrap; }
+  .hl:hover { color: var(--ink); text-decoration: underline; }
+  .viewas { display: flex; align-items: center; gap: 8px; font-size: var(--t1); color: var(--mut); white-space: nowrap; }
+  .seg { display: flex; padding: 2px; background: var(--sunk); border-radius: 8px; }
+  .seg button { height: 32px; padding: 0 12px; border-radius: 6px; font-size: var(--t1); color: var(--soft); white-space: nowrap; }
+  .seg button[aria-pressed="true"] { background: var(--surface); color: var(--ink); font-weight: 600; box-shadow: 0 1px 2px rgba(17, 20, 24, .12); }
+  .seg button span { color: var(--mut); font-weight: 400; }
+  .rolesel { display: none; height: 36px; padding: 0 8px; border: 1px solid var(--line2); border-radius: 8px; background: var(--surface); font: inherit; font-size: var(--t1); color: var(--ink); }
+
+  /* split */
+  .split { flex: 1; min-height: 0; display: grid; grid-template-columns: minmax(0, 3fr) minmax(400px, 2fr); }
+
+  /* map */
+  .mapbox { position: relative; overflow: hidden; background: var(--bg); min-height: 0; }
+  .mapbox svg { position: absolute; inset: 0; width: 100%; height: 100%; display: block; }
+  .land { fill: var(--surface); stroke: var(--line2); stroke-width: 1; stroke-linejoin: round; }
+  .ctx { fill: var(--line2); }
+  .area { fill: var(--risk); fill-opacity: .08; stroke: var(--risk); stroke-opacity: .35; stroke-width: 1; stroke-dasharray: 3 3; }
+  .lane { fill: none; stroke: var(--risk); stroke-width: 3; stroke-linecap: round; transition: stroke .5s var(--ease); }
+  .lane.saved { stroke: var(--saved); }
+  .lane.handled { stroke: var(--soft); stroke-opacity: .55; }
+  .feed { fill: none; stroke: var(--soft); stroke-width: 1.5; stroke-dasharray: 4 4; stroke-opacity: .7; }
+  .dest { fill: var(--surface); stroke: var(--risk); stroke-width: 2; transition: stroke .5s var(--ease); }
+  .dest.saved { stroke: var(--saved); }
+  .dest.handled { stroke: var(--soft); }
+  .wh { fill: var(--ink); stroke: var(--surface); stroke-width: 2; }
+  .pin { fill: var(--soft); stroke: var(--surface); stroke-width: 2; cursor: pointer; }
+  .pin.sel { fill: var(--risk); }
+  .pin.done { fill: var(--saved); }
+  .pin.ring { fill: var(--surface); stroke: var(--soft); stroke-width: 3; }
+  .pin.ring.sel { stroke: var(--risk); }
+  .pin.ring.done { stroke: var(--saved); }
+  .halo { fill: none; stroke: var(--risk); stroke-opacity: .35; stroke-width: 2; pointer-events: none; }
+  .halo.done { stroke: var(--saved); }
+  .leader { stroke: var(--mut); stroke-opacity: .55; stroke-width: 1; }
+  .scrim { fill: var(--bg); fill-opacity: .8; pointer-events: none; }
+
+  .labels { position: absolute; inset: 0; pointer-events: none; }
+  .lbl { position: absolute; left: 0; top: 0; visibility: hidden; font-size: var(--t1); line-height: 1.2; }
+  .pin-l { pointer-events: auto; display: block; max-width: 300px; padding: 4px 10px; border-radius: 6px; background: var(--surface); border: 1px solid var(--line2); font-size: var(--t1); line-height: 1.35; color: var(--soft); box-shadow: 0 1px 2px rgba(17, 20, 24, .06); }
+  .pin-l:hover { border-color: var(--mut); color: var(--ink); }
+  .pin-l .v { font-weight: 600; color: var(--ink); white-space: nowrap; }
+  .pin-l.sel { border-color: var(--risk); color: var(--ink); box-shadow: 0 2px 8px rgba(163, 71, 11, .16); }
+  .pin-l.sel .v { color: var(--risk); }
+  .pin-l.done .v { color: var(--saved); }
+  .pin-l.done.sel { border-color: var(--saved); box-shadow: 0 2px 8px rgba(14, 122, 92, .16); }
+  .wh-l, .city-l { font-size: var(--t1); line-height: 1.2; white-space: nowrap; text-shadow: 0 0 2px var(--surface), 0 0 2px var(--surface), 0 0 4px var(--surface); }
+  .wh-l { font-weight: 600; color: var(--ink); }
+  .city-l { color: var(--soft); }
+  .wh-l.dim { opacity: .35; }
+
+  .cap { position: absolute; left: 24px; top: 20px; pointer-events: none; }
+  .cap b { display: block; font-size: var(--t2); font-weight: 600; }
+  .cap > span { display: block; font-size: var(--t1); color: var(--soft); }
+  .cap .sv { color: var(--saved); font-weight: 600; }
+  .legend { position: absolute; left: 24px; bottom: 20px; display: flex; flex-direction: column; gap: 4px; font-size: var(--t1); color: var(--soft); pointer-events: none; }
+  .legend i { display: inline-block; vertical-align: middle; margin-right: 8px; }
+  .legend .k-wh { width: 10px; height: 10px; background: var(--ink); }
+  .legend .k-lane { width: 18px; height: 3px; border-radius: 2px; background: var(--risk); }
+  .legend .k-saved { width: 18px; height: 3px; border-radius: 2px; background: var(--saved); }
+
+  /* dock */
+  .dock { min-height: 0; display: flex; flex-direction: column; background: var(--surface); border-left: 1px solid var(--line); }
+  .strip { display: none; }
+  .tabs { flex: none; display: flex; gap: 24px; padding: 0 32px; border-bottom: 1px solid var(--line); }
+  .tabs button { height: 48px; font-weight: 600; color: var(--mut); border-bottom: 2px solid transparent; margin-bottom: -1px; }
+  .tabs button[aria-selected="true"] { color: var(--ink); border-bottom-color: var(--ink); }
+  .dbody { flex: 1; min-height: 0; overflow: auto; padding: 24px 32px; }
+  .dfoot { flex: none; padding: 16px 32px 24px; border-top: 1px solid var(--line); background: var(--surface); }
+
+  .meta { font-size: var(--t1); color: var(--mut); }
+  h1 { font: 600 var(--t3)/1.25 var(--disp); margin-top: 4px; }
+  .detail { color: var(--soft); margin-top: 8px; }
+  .money { margin-top: 24px; }
+  .big { font: 600 var(--t4)/1.1 var(--disp); font-variant-numeric: tabular-nums; letter-spacing: -.01em; }
+  .big.risk { color: var(--risk); }
+  .big.saved { color: var(--saved); }
+  .sub { color: var(--soft); margin-top: 4px; }
+  .dl { display: flex; flex-wrap: wrap; justify-content: space-between; gap: 4px 16px; margin-top: 16px; padding: 10px 14px; border-radius: 8px; background: var(--deadline-wash); }
+  .dl .left { color: var(--deadline); font-weight: 600; font-variant-numeric: tabular-nums; }
+  .clause { margin-top: 24px; }
+  .clause .lead { font-size: var(--t1); color: var(--mut); margin-bottom: 8px; }
+  .clause blockquote { padding-left: 16px; border-left: 2px solid var(--line2); color: var(--ink); }
+  .clause figcaption { margin-top: 8px; font-size: var(--t1); color: var(--mut); padding-left: 16px; }
+
+  .rec { font-size: var(--t1); color: var(--mut); }
+  .act { font-weight: 600; margin-top: 2px; }
+  .cost { font-size: var(--t1); color: var(--soft); margin-top: 2px; }
+  .gate { font-size: var(--t1); color: var(--ink); margin-top: 8px; padding: 8px 12px; border-radius: 8px; background: var(--sunk); }
+  .row { display: flex; flex-wrap: wrap; align-items: center; gap: 8px 16px; margin-top: 12px; }
+  .btn[disabled] { opacity: .45; cursor: not-allowed; }
+  .why { font-size: var(--t1); color: var(--soft); }
+  .btn.next { height: auto; min-height: 44px; padding: 10px 18px; }
+  .ok { font-size: var(--t1); color: var(--saved); font-weight: 600; }
+  .dalso { flex: none; padding: 0 32px 16px; background: var(--surface); }
+  .dalso:empty { display: none; }
+  .dfoot { padding-bottom: 16px; }
+  .also { display: flex; align-items: center; justify-content: space-between; gap: 16px; padding-top: 12px; border-top: 1px solid var(--line); font-size: var(--t1); color: var(--soft); }
+  .also .btn { height: 36px; padding: 0 14px; font-size: var(--t1); flex: none; }
+  .also .ok { flex: none; }
+
+  /* evidence */
+  .card { padding: 16px 0 20px; border-bottom: 1px solid var(--line); }
+  .card:first-child { padding-top: 0; }
+  .card > p { color: var(--ink); }
+  .art { margin-top: 12px; padding: 12px 16px; border-radius: 8px; background: var(--bg); font-size: var(--t1); }
+  .art > .rows:first-child { margin-top: 0; }
+  .art .hd { font: 600 var(--t3)/1.2 var(--disp); font-variant-numeric: tabular-nums; }
+  .art .hd small { font: 400 var(--t1) var(--sans); color: var(--soft); margin-left: 8px; }
+  .rows { list-style: none; margin-top: 8px; }
+  .rows li { display: flex; justify-content: space-between; gap: 16px; padding: 4px 0; border-top: 1px solid var(--line); }
+  .rows li:first-child { border-top: 0; }
+  .rows li span:last-child { text-align: right; white-space: nowrap; font-variant-numeric: tabular-nums; }
+  .rows li.tot { font-weight: 600; border-top: 1px solid var(--line2); }
+  .rows .m { color: var(--mut); }
+  .q + .q { margin-top: 12px; padding-top: 12px; border-top: 1px solid var(--line); }
+  .q blockquote { color: var(--ink); }
+  .q div { margin-top: 4px; color: var(--mut); }
+  .chk { color: var(--saved); font-weight: 600; }
+  details { margin-top: 16px; font-size: var(--t1); color: var(--soft); }
+  details summary { cursor: pointer; color: var(--mut); padding: 4px 0; }
+  details summary:hover { color: var(--ink); }
+  details p { margin-top: 8px; }
+
+  /* phone: the map becomes a header, the dock becomes the page */
+  @media (max-width: 760px) {
+    body { display: block; overflow: auto; height: auto; }
+    .top { height: 52px; padding: 0 16px; gap: 12px; }
+    .top .clock, .top .hl, .seg, .viewas > span { display: none; }
+    .rolesel { display: block; }
+    .split { display: block; }
+    .mapbox { height: 40vh; min-height: 280px; max-height: 360px; border-bottom: 1px solid var(--line); }
+    .cap, .legend { display: none; }
+    .dock { border-left: 0; display: block; }
+    .strip { display: flex; gap: 8px; overflow-x: auto; padding: 12px 16px; border-bottom: 1px solid var(--line); scrollbar-width: none; }
+    .strip::-webkit-scrollbar { display: none; }
+    .strip button { flex: none; max-width: 240px; padding: 6px 12px; border-radius: 8px; border: 1px solid var(--line2); font-size: var(--t1); line-height: 1.35; color: var(--soft); }
+    .strip button .v { display: inline; font-weight: 600; color: var(--ink); font-variant-numeric: tabular-nums; }
+    .strip button[aria-pressed="true"] { border-color: var(--risk); color: var(--ink); }
+    .strip button[aria-pressed="true"] .v { color: var(--risk); }
+    .strip button.done .v { color: var(--saved); }
+    .strip button.done[aria-pressed="true"] { border-color: var(--saved); }
+    .tabs { padding: 0 16px; }
+    .dbody { overflow: visible; padding: 20px 16px 24px; }
+    .dfoot { position: sticky; bottom: 0; padding: 12px 16px 16px; box-shadow: 0 -6px 16px rgba(17, 20, 24, .06); }
+    .mfoot { display: block; padding: 0 16px 24px; }
+    .also { margin-top: 0; padding: 12px 16px; border-top: 1px solid var(--line); }
+    .dock { display: flex; flex-direction: column; }
+    .dalso { order: 4; padding: 0 0 8px; }
+    .dfoot { order: 5; }
+    .mfoot { order: 6; }
+    .pri.inline { display: flex; align-items: center; gap: 12px; }
+    .pri.inline .ptxt { flex: 1; min-width: 0; }
+    .pri.inline .row { margin-top: 0; flex: none; flex-direction: column; align-items: flex-end; gap: 4px; }
+    .strip button { white-space: nowrap; max-width: none; }
+    .strip button .v { display: inline; margin-left: 4px; }
+  }
+  .mfoot { display: none; }
+  .mock-note { right: calc(max(400px, 40%) + 12px); }
+  @media (max-width: 760px) { .mock-note { display: none; } }
+</style>
+</head>
+<body>
+<header class="top">
+  <span class="brand">Tarangini Control Tower</span>
+  <span class="clock num" id="clock"></span>
+  <span class="grow"></span>
+  <a class="hl" href="#health" id="health" title="Not built in this mockup"></a>
+  <div class="viewas"><span>View as</span>
+    <div class="seg" id="seg" role="group" aria-label="View as"></div>
+    <select class="rolesel" id="rolesel" aria-label="View as"></select>
+  </div>
+</header>
+<main class="split">
+  <section class="mapbox" id="mapbox" aria-label="Map of India with the disruptions">
+    <svg id="map" aria-hidden="true"></svg>
+    <div class="labels" id="labels"></div>
+    <div class="cap" id="cap"></div>
+    <div class="legend" id="legend"><span><i class="k-wh"></i>Warehouse</span><span><i class="k-lane"></i>Lane at risk</span><span><i class="k-saved"></i>Saved after approval</span></div>
+  </section>
+  <aside class="dock" aria-label="Decision">
+    <div class="strip" id="strip" aria-label="Disruptions"></div>
+    <div class="tabs" role="tablist">
+      <button role="tab" id="tab-decision" data-tab="decision">Decision</button>
+      <button role="tab" id="tab-evidence" data-tab="evidence">Evidence</button>
+    </div>
+    <div class="dbody" id="dbody" role="tabpanel"></div>
+    <div class="dfoot" id="dfoot"></div>
+    <div class="dalso" id="dalso"></div>
+    <div class="mfoot"><a class="hl" href="#health" id="health-m"></a></div>
+  </aside>
+</main>
+<div class="mock-note">Mockup C: map-led, docked decision</div>
+
+<script src="data.js"></script>
+<script src="../india.js"></script>
+<script>
+const C = window.CT2, N = C.network;
+const $ = (id) => document.getElementById(id);
+const esc = (s) => String(s).replace(/[&<>"]/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" })[c]);
+
+/* ---------- formatting ---------- */
+const inr = (v) => "Rs " + Math.round(v).toLocaleString("en-IN");
+const inrS = (v) => v >= 1e7 ? `Rs ${(v / 1e7).toFixed(2)} Cr` : v >= 1e5 ? `Rs ${(v / 1e5).toFixed(2)} L` : inr(v);
+const hm = (t) => new Date(t).toLocaleTimeString("en-GB", { hour: "2-digit", minute: "2-digit", hour12: false, timeZone: "Asia/Kolkata" });
+const T0 = Date.now(), NOW0 = Date.parse(C.now);
+const now = () => NOW0 + (Date.now() - T0);
+function left(iso) {
+  const m = Math.ceil((Date.parse(iso) - now()) / 60000);
+  if (m <= 0) return "deadline passed";
+  return (m >= 60 ? `${Math.floor(m / 60)} h ${m % 60} min` : `${m} min`) + " left";
+}
+
+/* ---------- data helpers ---------- */
+const wh = (id) => N.warehouses.find((w) => w.id === id);
+const zone = (id) => N.zones.find((z) => z.id === id);
+const carrier = (id) => N.carriers.find((c) => c.id === id);
+const place = (s) => s.replace(/\s*\(.*\)/, "");
+const SRC = { imd: "IMD weather alert", carrier_notice: "Carrier notice", dc_ops: "Warehouse operations", supplier_edi: "Supplier feed" };
+const ROLES = [
+  { id: "asha", name: "Asha", role: "VP Operations" },
+  { id: "kiran", name: "Kiran", role: "Dispatch South" },
+  { id: "meera", name: "Meera", role: "Finance" },
+];
+const S = { role: "asha", sel: 1, tab: "decision", done: {}, done2: {} };
+const brief = (id) => C.briefs[id];
+const visible = (b) => S.role !== "kiran" || b.chain.warehouses.every((w) => w.id === "DC-HYD");
+const list = () => C.incidents.map((i) => brief(i.id)).filter(visible);
+
+function lanesOf(b) {
+  return b.chain.cities.map((c) => { const z = zone(c.id); return { z, dc: wh(z.serving_dc), n: c.shipments }; });
+}
+function anchor(b) {
+  const i = b.incident;
+  if (i.lat != null) return { lat: i.lat, lon: i.lon };
+  if (i.dc_id) return wh(i.dc_id);
+  if (i.supplier_id) { const s = N.suppliers.find((s) => s.id === i.supplier_id); if (s && s.lat != null) return s; }
+  let W = 0, la = 0, lo = 0;
+  for (const c of b.chain.cities) { const z = zone(c.id); W += c.shipments; la += z.lat * c.shipments; lo += z.lon * c.shipments; }
+  return { lat: la / W, lon: lo / W };
+}
+function plan(b) {
+  const pay = b.playbooks.filter((p) => p.est_saving_inr > p.est_cost_inr)
+    .sort((a, c) => (c.est_saving_inr - c.est_cost_inr) - (a.est_saving_inr - a.est_cost_inr));
+  const primary = pay[0] || b.playbooks.slice().sort((a, c) => a.est_cost_inr - c.est_cost_inr)[0];
+  return { primary, others: b.playbooks.filter((p) => p !== primary) };
+}
+function parse(p) {
+  let m;
+  if (p.action_type === "notify_customers" && (m = p.title.match(/Notify (\d+) customers?/))) return { kind: "notify", n: +m[1] };
+  if (p.action_type === "update_eta" && (m = p.title.match(/for (\d+) shipments?/))) return { kind: "eta", n: +m[1] };
+  if (p.action_type === "swap_carrier" && (m = p.title.match(/Swap (\d+) shipments? to carrier (\w+)/))) return { kind: "swap", n: +m[1], to: carrier(m[2]).name };
+  return { kind: "other" };
+}
+function actLabel(p, b) {
+  const a = parse(p), dl = b.money.notify_deadline;
+  if (a.kind === "notify") return `Notify ${a.n} customer${a.n === 1 ? "" : "s"}` + (dl && p.est_saving_inr > 0 ? ` before ${hm(dl)}` : "");
+  if (a.kind === "eta") return `Update delivery times for ${a.n} shipments`;
+  if (a.kind === "swap") return `Move ${a.n} shipments to ${a.to}`;
+  return p.title;
+}
+function doneText(p, b, at) {
+  const a = parse(p), dl = b.money.notify_deadline;
+  if (a.kind === "notify") return `${a.n} customers told at ${hm(at)}` + (dl && p.est_saving_inr > 0 ? `, before the ${hm(dl)} deadline.` : ".");
+  if (a.kind === "eta") return `Delivery times updated for ${a.n} shipments.`;
+  if (a.kind === "swap") return `${a.n} shipments moved to ${a.to} for ${inr(p.est_cost_inr)}.`;
+  return "Approved.";
+}
+const clauseNo = (id) => id.replace(/^MSA-/, "");
+const scrub = (s) => s.replace(/MSA-([\d.]+)/g, "clause $1").replace(/ IST/g, "").replace(/ETAs/g, "delivery times");
+function clauseOf(b, p) {
+  return b.clauses.find((c) => c.clause_id === p.clause_id && c.chain === p.clause_chain) || { chain: p.clause_chain, clause_id: p.clause_id, text: p.clause_quote };
+}
+const clauseRef = (c) => `${c.chain} contract · clause ${clauseNo(c.clause_id)}${c.heading ? `, ${c.heading}` : ""}${c.page ? ` · page ${c.page}` : ""}`;
+function creditKind(m) {
+  if (m.late_inr > 0 && m.fill_inr > 0) return "contract credits";
+  return m.fill_inr > 0 ? "short-delivery credits" : "late-delivery credits";
+}
+const savedBy = (b) => { const d = S.done[b.incident.id]; return d && d.p.est_saving_inr > 0 ? d.p.est_saving_inr : 0; };
+const phone = (v) => S.role === "asha" ? v : v.replace(/^(\+91) .*$/, "$1 ••••• •••••");
+const roleOf = () => ROLES.find((r) => r.id === S.role);
+
+/* ---------- header ---------- */
+function header() {
+  $("seg").innerHTML = ROLES.map((r) => `<button data-role="${r.id}" aria-pressed="${r.id === S.role}">${r.name} <span>${r.role}</span></button>`).join("");
+  $("rolesel").innerHTML = ROLES.map((r) => `<option value="${r.id}"${r.id === S.role ? " selected" : ""}>${r.name}, ${r.role}</option>`).join("");
+  const warn = C.health.feeds.filter((f) => f.status !== "ok").length;
+  const t = warn ? `Data health: ${warn} feeds need a look` : "Data health: all feeds fine";
+  $("health").textContent = t;
+  $("health-m").textContent = t;
+}
+function tick() {
+  const d = new Date(now());
+  $("clock").textContent = d.toLocaleDateString("en-GB", { weekday: "short", day: "numeric", month: "short", timeZone: "Asia/Kolkata" }) + ", " + hm(d);
+  document.querySelectorAll("[data-dl]").forEach((n) => (n.textContent = left(n.dataset.dl)));
+}
+
+/* ---------- strip (phone) ---------- */
+function strip() {
+  $("strip").innerHTML = list().map((b) => {
+    const i = b.incident, s = savedBy(b), d = S.done[i.id];
+    const v = s ? `${inrS(s)} avoided` : d ? `${inrS(i.net_inr)}, approved` : inrS(i.net_inr);
+    return `<button data-id="${i.id}" aria-pressed="${i.id === S.sel}" class="${d ? "done" : ""}">${esc(i.title)}<span class="v">${v}</span></button>`;
+  }).join("");
+  const st = $("strip"), on = st.querySelector('[aria-pressed="true"]');
+  if (on && st.offsetParent) st.scrollLeft = Math.max(0, on.offsetLeft - st.offsetLeft - 16);
+}
+
+/* ---------- dock ---------- */
+function dock() {
+  const b = brief(S.sel);
+  for (const t of ["decision", "evidence"]) $("tab-" + t).setAttribute("aria-selected", S.tab === t);
+  $("dbody").innerHTML = S.tab === "decision" ? decision(b) : evidence(b);
+  $("dfoot").innerHTML = foot(b);
+}
+function decision(b) {
+  const i = b.incident, m = b.money, { primary: p } = plan(b), d = S.done[i.id], cl = clauseOf(b, p);
+  const lanes = lanesOf(b);
+  const where = lanes.length === 1 ? ` to ${lanes[0].z.city}` : "";
+  let money;
+  if (d && d.p.est_saving_inr > 0) money = `<div class="big saved">${inr(d.p.est_saving_inr)} avoided</div><p class="sub">${doneText(d.p, b, d.at)}</p>`;
+  else if (d) money = `<div class="big">${inr(m.net_inr)}</div><p class="sub">Still owed in ${creditKind(m)}: no option saves more than it costs.</p>`;
+  else money = `<div class="big risk">${inr(m.net_inr)}</div><p class="sub">in ${creditKind(m)} on ${m.shipments} shipments${where}, carrying ${inrS(m.value_inr)} of goods</p>`;
+  const waive = !d && m.notify_deadline && p.action_type === "notify_customers" && p.est_saving_inr > 0;
+  const dl = waive ? `<div class="dl"><span>Waived if customers are told by ${hm(m.notify_deadline)}</span><span class="left" data-dl="${m.notify_deadline}">${left(m.notify_deadline)}</span></div>` : "";
+  const lead = p.est_saving_inr > 0 && p.action_type === "notify_customers" ? "Why it can be waived" : "What the contract says";
+  return `<p class="meta">${SRC[i.source] || "Alert"} · since ${hm(i.started_at)}</p>
+    <h1>${esc(i.title)}</h1>
+    <p class="detail">${esc(i.detail)}</p>
+    <div class="money">${money}${dl}</div>
+    <figure class="clause"><p class="lead">${lead}</p><blockquote>“${esc(cl.text)}”</blockquote><figcaption>${esc(clauseRef(cl))}${cl.verified ? " · quote checked against the contract" : ""}</figcaption></figure>`;
+}
+function approveBtn(p, primary) {
+  const cls = primary ? "btn primary" : "btn";
+  if (S.role === "meera") return `<button class="${cls}" disabled>Approve</button>${primary ? `<span class="why">Finance cannot execute</span>` : ""}`;
+  const gated = p.goods_value_inr > 5e5;
+  const label = !gated ? "Approve" : S.role === "asha" ? "Approve as Asha" : "Request Asha's approval";
+  return `<button class="${cls}" data-approve="${p.id}">${label}</button>`;
+}
+function foot(b) {
+  const i = b.incident, { primary: p, others } = plan(b), d = S.done[i.id], ag = b.agent;
+  let h;
+  if (!d) {
+    const who = ag.outcome === "fallback" ? "A fixed rule recommends (the agent gave no valid plan)" : "Agent recommends";
+    const cost = p.est_saving_inr > 0
+      ? `Costs ${inr(p.est_cost_inr)}. ${Math.round(p.est_saving_inr) >= Math.round(i.net_inr) ? "Removes the whole credit." : `Saves ${inr(p.est_saving_inr)}.`}`
+      : esc(scrub(p.rationale));
+    const gate = p.goods_value_inr > 5e5 ? `<p class="gate">Moves ${inrS(p.goods_value_inr)} of goods. Anything over Rs 5 L needs Asha's approval.</p>` : "";
+    h = `<div class="pri inline"><div class="ptxt"><p class="rec">${who}</p><p class="act">${esc(actLabel(p, b))}</p><p class="cost">${cost}</p>${gate}</div><div class="row">${approveBtn(p, true)}</div></div>`;
+  } else {
+    const nx = list().find((x) => !S.done[x.incident.id]);
+    const r = ROLES.find((r) => r.id === d.by);
+    h = `<p class="ok">Approved by ${r.name} at ${hm(d.at)} · written to the audit log</p>` +
+      (d.p.est_saving_inr > 0 ? "" : `<p class="cost">${doneText(d.p, b, d.at)}</p>`) +
+      `<div class="row">${nx ? `<button class="btn primary next" data-id="${nx.incident.id}">Next: ${esc(nx.incident.title)}</button>` : `<span class="why">Every disruption in view is handled.</span>`}</div>`;
+  }
+  let a = "";
+  for (const o of others) {
+    const done2 = S.done2[o.id];
+    a += `<div class="also"><span>Also proposed: ${esc(actLabel(o, b).replace(/^./, (c) => c.toLowerCase()))}</span>${done2 ? `<span class="ok">Approved</span>` : approveBtn(o, false)}</div>`;
+  }
+  $("dalso").innerHTML = a;
+  return h;
+}
+function evidence(b) {
+  const m = b.money, ag = b.agent, lanes = lanesOf(b).sort((a, c) => c.n - a.n);
+  const showL = lanes.slice(0, 5);
+  const optStep = ag.steps.find((s) => s.tool === "list_options");
+  const nOpt = optStep ? parseInt(optStep.result_summary) : b.playbooks.length;
+  const cust = m.top_customers.filter((c) => c.net_inr > 0);
+  const card1 = `<section class="card"><p>It found every shipment this disruption touches.</p><div class="art">
+      <div class="hd">${m.shipments} shipments<small>${inr(m.value_inr)} of goods</small></div>
+      <ul class="rows">${showL.map((l) => `<li><span>${place(l.dc.city)} to ${l.z.city}</span><span>${l.n}</span></li>`).join("")}${lanes.length > 5 ? `<li><span class="m">${lanes.length - 5} more lanes</span><span class="m">${lanes.slice(5).reduce((a, l) => a + l.n, 0)}</span></li>` : ""}</ul>
+      <ul class="rows" style="margin-top:12px">${b.chain.carriers.map((c) => { const k = carrier(c.id); return `<li><span>${k.name}, ${c.shipments} trucks</span><span>${phone(k.dispatch_phone)}</span></li>`; }).join("")}</ul>
+    </div></section>`;
+  const card2 = `<section class="card"><p>It priced the credit each customer's contract allows. Code does the sums, never the model.</p><div class="art">
+      <ul class="rows">${cust.map((c) => `<li><span>${esc(c.customer)}<span class="m">, ${c.shipments} shipment${c.shipments === 1 ? "" : "s"}</span></span><span>${inr(c.net_inr)}</span></li>`).join("")}
+      ${b.chain.customers.length > cust.length ? `<li><span class="m">${b.chain.customers.length - cust.length} more customers</span><span class="m">${inr(m.net_inr - cust.reduce((a, c) => a + c.net_inr, 0))}</span></li>` : ""}
+      <li class="tot"><span>Total</span><span>${inr(m.net_inr)}</span></li></ul></div></section>`;
+  const card3 = `<section class="card"><p>It fetched the contract clauses. Code checked every quote against the contract before showing it.</p><div class="art">
+      ${b.clauses.map((c) => `<div class="q"><blockquote>“${esc(c.text)}”</blockquote><div>${esc(clauseRef(c))}${c.verified ? ` · <span class="chk">quote checked</span>` : ""}</div></div>`).join("")}</div></section>`;
+  const card4 = `<section class="card"><p>It weighed ${nOpt} options and proposed ${b.playbooks.length}. A move is offered only if it saves more than it costs.</p><div class="art">
+      <ul class="rows">${b.playbooks.map((p) => `<li><span>${esc(actLabel(p, b))}</span><span>${p.est_cost_inr > 0 ? `costs ${inr(p.est_cost_inr)}` : "no cost"}${p.est_saving_inr > 0 ? `, saves ${inr(p.est_saving_inr)}` : ", no saving"}</span></li>`).join("")}</ul></div></section>`;
+  const notes = ag.steps.filter((s) => /^rejected/.test(s.result_summary)).map((s) => {
+    const why = s.result_summary.replace(/^rejected:\s*/, "")
+      .replace(/clause (MSA-[\d.]+) was not returned by get_clause/g, (_, c) => `it cited clause ${clauseNo(c)} without fetching it`)
+      .replace(/playbook \d+: one playbook per action type; \w+ is already proposed/, "it proposed the same kind of action twice");
+    return `<p>Code rejected one proposal: ${why}. The agent tried again.</p>`;
+  }).join("");
+  const fb = ag.outcome === "fallback" ? `<p>The agent did not reach a valid plan, so a fixed rule chose from the priced options.</p>` : "";
+  const run = `<details><summary>Run details · ${(ag.ms / 1000).toFixed(1)} s on this machine</summary>
+      <p>Model: ${esc(ag.model.split(":")[0])}, running locally, so there is no API cost. ${ag.llm_calls} model calls, ${ag.prompt_tokens.toLocaleString("en-IN")} tokens read, ${ag.completion_tokens.toLocaleString("en-IN")} written.</p>${notes}${fb}</details>`;
+  return card1 + card2 + card3 + card4 + run;
+}
+
+/* ---------- map ---------- */
+const NS = "http://www.w3.org/2000/svg";
+const BB = (() => {
+  const a = [180, -180, 90, -90];
+  for (const r of window.INDIA) for (const [lo, la] of r) { a[0] = Math.min(a[0], lo); a[1] = Math.max(a[1], lo); a[2] = Math.min(a[2], la); a[3] = Math.max(a[3], la); }
+  return { lon0: a[0], lon1: a[1], lat0: a[2], lat1: a[3] };
+})();
+function projector(w, h, pad) {
+  const k = Math.cos((22 * Math.PI) / 180), sx = (BB.lon1 - BB.lon0) * k, sy = BB.lat1 - BB.lat0;
+  const s = Math.min((w - 2 * pad) / sx, (h - 2 * pad) / sy), ox = (w - sx * s) / 2, oy = (h - sy * s) / 2;
+  const P = (la, lo) => [ox + (lo - BB.lon0) * k * s, oy + (BB.lat1 - la) * s];
+  P.s = s;
+  return P;
+}
+function el(tag, attrs, parent) { const e = document.createElementNS(NS, tag); for (const k in attrs) e.setAttribute(k, attrs[k]); parent.appendChild(e); return e; }
+function hull(pts) {
+  pts = pts.slice().sort((a, b) => a[0] - b[0] || a[1] - b[1]);
+  const cr = (o, a, b) => (a[0] - o[0]) * (b[1] - o[1]) - (a[1] - o[1]) * (b[0] - o[0]);
+  const lo = [], up = [];
+  for (const p of pts) { while (lo.length >= 2 && cr(lo[lo.length - 2], lo[lo.length - 1], p) <= 0) lo.pop(); lo.push(p); }
+  for (const p of pts.slice().reverse()) { while (up.length >= 2 && cr(up[up.length - 2], up[up.length - 1], p) <= 0) up.pop(); up.push(p); }
+  return lo.slice(0, -1).concat(up.slice(0, -1));
+}
+const overlap = (a, b, g = 4) => a.x < b.x + b.w + g && b.x < a.x + a.w + g && a.y < b.y + b.h + g && b.y < a.y + a.h + g;
+const DIRS = { e: [1, 0], w: [-1, 0], ne: [1, -1], se: [1, 1], nw: [-1, -1], sw: [-1, 1], n: [0, -1], s: [0, 1] };
+function boxAt(x, y, w, h, dir, d) {
+  const [dx, dy] = DIRS[dir];
+  const bx = dx > 0 ? x + d : dx < 0 ? x - d - w : x - w / 2;
+  const by = dy > 0 ? y + d : dy < 0 ? y - d - h : y - h / 2;
+  return { x: bx, y: by, w, h };
+}
+
+let lastLayout = null;
+function drawMap() {
+  const box = $("mapbox"), W = box.clientWidth, H = box.clientHeight;
+  if (!W || !H) return;
+  const compact = W < 560;
+  const svg = $("map");
+  svg.setAttribute("viewBox", `0 0 ${W} ${H}`);
+  svg.innerHTML = "";
+  const P = projector(W, H, compact ? 12 : 28);
+  const sel = brief(S.sel), selD = S.done[S.sel];
+  const laneCls = selD ? (selD.p.est_saving_inr > 0 ? "saved" : "handled") : "";
+
+  // land and faint context
+  const gL = el("g", {}, svg);
+  for (const ring of window.INDIA) el("path", { class: "land", d: "M" + ring.map(([lo, la]) => P(la, lo).map((v) => v.toFixed(1)).join(",")).join("L") + "Z" }, gL);
+  const gC = el("g", {}, svg);
+  for (const z of N.zones) { const [x, y] = P(z.lat, z.lon); el("circle", { class: "ctx", cx: x, cy: y, r: 2 }, gC); }
+
+  // the selected incident: area, inbound feeds, lanes, destinations
+  const A = anchor(sel), [ax, ay] = P(A.lat, A.lon);
+  if (sel.incident.radius_km) el("circle", { class: "area", cx: ax, cy: ay, r: (sel.incident.radius_km / 111) * P.s }, svg);
+  if (sel.incident.supplier_id) for (const w of sel.chain.warehouses) { const [x, y] = P(wh(w.id).lat, wh(w.id).lon); el("line", { class: "feed", x1: ax, y1: ay, x2: x, y2: y }, svg); }
+  const lanes = lanesOf(sel);
+  const gLn = el("g", {}, svg);
+  for (const l of lanes) { const [x1, y1] = P(l.dc.lat, l.dc.lon), [x2, y2] = P(l.z.lat, l.z.lon); el("line", { class: "lane " + laneCls, x1, y1, x2, y2, "stroke-width": Math.min(4, 2 + l.n / 6) }, gLn); }
+  const marks = [];
+  for (const l of lanes) { const [x, y] = P(l.z.lat, l.z.lon); el("circle", { class: "dest " + laneCls, cx: x, cy: y, r: 4 }, svg); marks.push({ x: x - 5, y: y - 5, w: 10, h: 10 }); }
+
+  // pins (a warehouse incident rings its warehouse), then warehouses on top
+  const vis = list();
+  const gLead = el("g", {}, svg);
+  for (const b of vis) {
+    const a = anchor(b), [x, y] = P(a.lat, a.lon), isSel = b.incident.id === S.sel, d = S.done[b.incident.id];
+    if (isSel) el("circle", { class: "halo" + (d ? " done" : ""), cx: x, cy: y, r: b.incident.dc_id ? 17 : 14 }, svg);
+    const ring = !!b.incident.dc_id;
+    const c = el("circle", { class: "pin" + (ring ? " ring" : "") + (isSel ? " sel" : "") + (d ? " done" : ""), cx: x, cy: y, r: ring ? 11 : isSel ? 8 : 6, "data-id": b.incident.id }, svg);
+    c.addEventListener("click", () => select(b.incident.id));
+    marks.push({ x: x - 9, y: y - 9, w: 18, h: 18 });
+  }
+  for (const w of N.warehouses) { const [x, y] = P(w.lat, w.lon); el("rect", { class: "wh", x: x - 6, y: y - 6, width: 12, height: 12, rx: 2 }, svg); marks.push({ x: x - 7, y: y - 7, w: 14, h: 14 }); }
+  // labels keep off the lit lanes too
+  for (const l of lanes) {
+    const [x1, y1] = P(l.dc.lat, l.dc.lon), [x2, y2] = P(l.z.lat, l.z.lon), n = Math.ceil(Math.hypot(x2 - x1, y2 - y1) / 8);
+    for (let k = 1; k < n; k++) { const x = x1 + ((x2 - x1) * k) / n, y = y1 + ((y2 - y1) * k) / n; marks.push({ x: x - 2, y: y - 2, w: 4, h: 4 }); }
+  }
+
+  // Kiran sees the Hyderabad region only
+  if (S.role === "kiran") {
+    const pts = N.zones.filter((z) => z.serving_dc === "DC-HYD").concat([wh("DC-HYD")]).map((z) => P(z.lat, z.lon));
+    const hp = hull(pts).map((p) => p.map((v) => v.toFixed(1)).join(",")).join(" ");
+    const defs = el("defs", {}, svg), mk = el("mask", { id: "kmask" }, defs);
+    el("rect", { x: 0, y: 0, width: W, height: H, fill: "#fff" }, mk);
+    el("polygon", { points: hp, fill: "#000", stroke: "#000", "stroke-width": compact ? 28 : 56, "stroke-linejoin": "round" }, mk);
+    el("rect", { class: "scrim", x: 0, y: 0, width: W, height: H, mask: "url(#kmask)" }, svg);
+  }
+
+  // labels: measured, then placed so they can never overlap or leave the box
+  const L = $("labels");
+  L.innerHTML = "";
+  const items = [];
+  const mk = (html, cls, x, y, dirs, ds, pr, extra) => {
+    const n = document.createElement("div"); n.className = "lbl"; n.innerHTML = html; L.appendChild(n);
+    items.push({ n, x, y, dirs, ds, pr, cls, ...extra });
+  };
+  const bR = box.getBoundingClientRect();
+  const obst = [...marks];
+  for (const id of ["cap", "legend"]) { const e = $(id); if (e.offsetParent) { const r = e.getBoundingClientRect(); obst.push({ x: r.left - bR.left, y: r.top - bR.top, w: r.width, h: r.height }); } }
+
+  const pinDirs = ["e", "w", "ne", "se", "nw", "sw", "n", "s"];
+  for (const b of vis) {
+    const i = b.incident, isSel = i.id === S.sel;
+    if (compact && !isSel) continue;
+    const a = anchor(b), [x, y] = P(a.lat, a.lon), d = S.done[i.id], s = savedBy(b);
+    const v = s ? `${inrS(s)} avoided` : d ? `${inrS(i.net_inr)}, approved` : inrS(i.net_inr);
+    mk(`<button class="pin-l${isSel ? " sel" : ""}${d ? " done" : ""}" data-id="${i.id}" style="${compact ? "max-width:" + Math.min(240, W - 24) + "px" : ""}">${esc(i.title)} <span class="v num">${v}</span></button>`, "pin", x, y, pinDirs, [14, 30, 56, 90, 130, 180], isSel ? 0 : 3 + i.rank, { lead: true });
+  }
+  for (const w of N.warehouses) {
+    const [x, y] = P(w.lat, w.lon);
+    const dim = S.role === "kiran" && w.id !== "DC-HYD";
+    const mine = lanes.some((l) => l.dc.id === w.id) || sel.incident.dc_id === w.id;
+    mk(`<span class="wh-l${dim ? " dim" : ""}">${place(w.city)}</span>`, "wh", x, y, ["e", "w", "s", "n", "se", "ne", "sw", "nw"], [10, 18, 28], mine ? 0.5 : 2.5);
+  }
+  const top = lanes.slice().sort((a, c) => c.n - a.n).slice(0, compact ? 2 : 4);
+  for (const l of top) {
+    if (l.z.city === place(l.dc.city)) continue;
+    const [x, y] = P(l.z.lat, l.z.lon);
+    mk(`<span class="city-l">${l.z.city} · ${l.n} shipment${l.n === 1 ? "" : "s"}</span>`, "city", x, y, ["e", "w", "s", "n", "se", "ne", "sw", "nw"], [8, 20, 34], 2, { lead: true });
+  }
+  for (const it of items) { it.w = it.n.offsetWidth; it.h = it.n.offsetHeight; }
+  items.sort((a, b) => a.pr - b.pr);
+  const placed = [], M = 6, dropped = [];
+  for (const it of items) {
+    let best = null;
+    outer: for (const d of it.ds) for (const dir of it.dirs) {
+      const b = boxAt(it.x, it.y, it.w, it.h, dir, d);
+      if (b.x < M || b.y < M || b.x + b.w > W - M || b.y + b.h > H - M) continue;
+      if (placed.some((p) => overlap(b, p.box))) continue;
+      if (obst.some((o) => overlap(b, o, 2))) continue;
+      best = { box: b, d };
+      break outer;
+    }
+    if (!best) { it.n.remove(); dropped.push(it.cls); continue; }
+    placed.push({ box: best.box, cls: it.cls });
+    it.n.style.transform = `translate(${best.box.x}px, ${best.box.y}px)`;
+    it.n.style.visibility = "visible";
+    if (it.lead && best.d > 16) {
+      const b = best.box, cx = Math.max(b.x, Math.min(it.x, b.x + b.w)), cy = Math.max(b.y, Math.min(it.y, b.y + b.h));
+      el("line", { class: "leader", x1: it.x, y1: it.y, x2: cx, y2: cy }, gLead);
+    }
+  }
+  lastLayout = { W, H, placed: placed.map((p) => ({ ...p.box, cls: p.cls })), dropped };
+  L.querySelectorAll(".pin-l").forEach((n) => n.addEventListener("click", () => select(+n.dataset.id)));
+
+  // caption
+  const atRisk = vis.filter((b) => !S.done[b.incident.id]).reduce((a, b) => a + b.incident.net_inr, 0);
+  const saved = vis.reduce((a, b) => a + savedBy(b), 0);
+  $("cap").innerHTML = S.role === "kiran"
+    ? `<b>Hyderabad warehouse region</b><span>${vis.length} disruption in Kiran's view</span>`
+    : `<b>${vis.length} disruptions this morning</b><span>${atRisk ? `${inrS(atRisk)} at risk` : "Nothing left at risk"}${saved ? ` · <span class="sv">${inrS(saved)} avoided</span>` : ""}</span>`;
+}
+
+/* ---------- actions ---------- */
+function select(id) { S.sel = id; render(); }
+function approve(pbId) {
+  const b = brief(S.sel), { primary } = plan(b);
+  if (primary.id === pbId) S.done[S.sel] = { p: primary, at: now(), by: S.role };
+  else S.done2[pbId] = true;
+  render();
+}
+function setRole(r) {
+  S.role = r;
+  if (!list().some((b) => b.incident.id === S.sel)) S.sel = list()[0].incident.id;
+  render();
+}
+function render() { header(); strip(); dock(); drawMap(); tick(); }
+
+document.addEventListener("click", (e) => {
+  const t = e.target.closest("button, a");
+  if (!t) return;
+  if (t.dataset.role) setRole(t.dataset.role);
+  else if (t.dataset.tab) { S.tab = t.dataset.tab; dock(); }
+  else if (t.dataset.approve) approve(+t.dataset.approve);
+  else if (t.dataset.id && !t.classList.contains("pin-l")) { S.tab = "decision"; select(+t.dataset.id); }
+  else if (t.getAttribute("href") === "#health") e.preventDefault();
+});
+$("rolesel").addEventListener("change", (e) => setRole(e.target.value));
+
+let raf = 0;
+new ResizeObserver(() => { cancelAnimationFrame(raf); raf = requestAnimationFrame(drawMap); }).observe($("mapbox"));
+render();
+setInterval(tick, 1000);
+</script>
+</body>
+</html>

@@ -1,0 +1,463 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>A. Morning desk</title>
+<link rel="stylesheet" href="fonts/fonts.css">
+<script>window.__errs = []; addEventListener("error", (e) => window.__errs.push(e.message));</script>
+<style>
+/* World 2, "Morning desk": 10:40 IST, an ops desk in daylight, contract printouts beside the screen.
+   Layout A unchanged. Borders only, flat white, no shadows, radius 4. Digits bold, units light, wherever money appears. */
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+:root {
+  --ground: #e8eeea; --surface: #fbfdfb;
+  --ink: #0f1f1a; --soft: #33443d; --mut: #52625b; --line: #cbd6cf; --line2: #7d8e86;
+  --agent: #3d34c4; --agent-dk: #2f279f;
+  --risk: #a84a08; --risk-wash: #f5e6da;
+  --saved: #08706b;
+  --deadline: #c62430; --deadline-wash: #fbe9ea;
+  --t1: 13px; --t2: 16px; --t3: 22px; --t4: 44px;
+  --sans: "Schibsted Grotesk", "Segoe UI", system-ui, sans-serif;
+  --serif: "Literata", Georgia, serif;
+  --r: 4px;
+}
+html { -webkit-text-size-adjust: 100%; }
+body { min-height: 100vh; background: var(--ground); color: var(--ink); font: 400 var(--t2)/1.5 var(--sans);
+       font-variant-numeric: lining-nums; -webkit-font-smoothing: antialiased; text-rendering: optimizeLegibility; }
+button { font: inherit; color: inherit; background: none; border: 0; cursor: pointer; text-align: left; }
+a { color: inherit; }
+button:focus-visible, a:focus-visible, .btn:focus-visible { outline: 2px solid var(--agent); outline-offset: 2px; }
+[hidden] { display: none !important; }
+.wrap { max-width: 1440px; margin: 0 auto; padding: 0 32px; }
+
+/* the signature: every rupee figure is a light unit and bold digits */
+.rs { white-space: nowrap; }
+.rs .u, .cnt .u { font-weight: 400; }
+.rs .d, .cnt .d { font-weight: 700; }
+/* tabular lining digits, but the comma and colon keep their proportional width (Schibsted's tabular comma is a full figure wide) */
+.rs .d, .cnt .d, .clock b, .rail .n { font-variant-numeric: lining-nums tabular-nums; }
+.sep { font-style: normal; font-variant-numeric: lining-nums proportional-nums; }
+
+/* header */
+.top { display: flex; align-items: center; justify-content: space-between; gap: 16px; height: 56px; border-bottom: 1px solid var(--line); }
+.brand { display: flex; align-items: baseline; gap: 16px; }
+.brand strong { font-size: var(--t2); font-weight: 700; letter-spacing: -.005em; }
+.brand span, .role-note { font-size: var(--t1); color: var(--mut); }
+.tools { display: flex; align-items: center; gap: 24px; }
+.quiet { font-size: var(--t1); color: var(--mut); text-decoration: underline; text-decoration-color: var(--line); text-decoration-thickness: 1px; text-underline-offset: 3px; }
+.quiet:hover { color: var(--ink); text-decoration-color: var(--ink); }
+.viewas { display: flex; align-items: center; gap: 16px; font-size: var(--t1); color: var(--mut); }
+.seg { display: flex; gap: 16px; }
+.seg button { font-size: var(--t1); padding: 4px 0 2px; border-bottom: 2px solid transparent; color: var(--soft); }
+.seg button:hover { color: var(--ink); }
+.seg button[aria-checked="true"] { color: var(--ink); font-weight: 600; border-bottom-color: var(--ink); }
+
+/* incident strip: a ruled row, no chips */
+.strip { display: grid; grid-template-columns: repeat(6, minmax(0, 1fr)); border-bottom: 1px solid var(--line); }
+.inc { position: relative; display: flex; flex-direction: column; gap: 6px; padding: 12px 16px 14px; font-size: var(--t1); }
+.inc + .inc { border-left: 1px solid var(--line); }
+.inc:first-child { padding-left: 0; }
+.inc[aria-current="true"]::after { content: ""; position: absolute; left: 0; right: 0; bottom: -1px; height: 2px; background: var(--ink); }
+.inc .row { display: flex; align-items: center; gap: 12px; }
+.inc .name { color: var(--soft); }
+.inc:hover .name { color: var(--ink); }
+.inc[aria-current="true"] .name { color: var(--ink); font-weight: 600; }
+.inc .amt { white-space: nowrap; color: var(--ink); }
+.inc .bar { flex: 1; height: 2px; background: var(--line); }
+.inc .bar i { display: block; height: 100%; min-width: 2px; background: var(--risk); }
+.inc.done .bar i { background: var(--saved); }
+.inc.done .amt { color: var(--saved); font-weight: 600; }
+.strip-note { grid-column: span 5; align-self: center; font-size: var(--t1); color: var(--mut); padding-left: 16px; border-left: 1px solid var(--line); }
+
+/* case */
+.case { display: grid; grid-template-columns: minmax(0, 1fr) 360px; gap: 32px; padding: 24px 0; align-items: start; }
+.head h1 { font: 700 var(--t3)/1.3 var(--sans); letter-spacing: -.012em; }
+.head p { color: var(--soft); margin-top: 2px; }
+.stages { list-style: none; margin-top: 16px; }
+.stage { display: grid; grid-template-columns: 112px minmax(0, 1fr); gap: 16px; padding: 14px 0; border-top: 1px solid var(--line); }
+.rail { display: flex; align-items: baseline; gap: 8px; }
+.rail .n { font-size: var(--t1); color: var(--mut); }
+.rail h2 { font-size: var(--t2); font-weight: 600; }
+.say { color: var(--ink); }
+.art { margin-top: 10px; }
+
+/* caught */
+.caught { display: flex; gap: 24px; align-items: center; }
+.facts { flex: 1; display: grid; gap: 2px; font-size: var(--t1); color: var(--soft); }
+.facts .big { font-size: var(--t3); color: var(--ink); line-height: 1.2; letter-spacing: -.01em; margin-bottom: 4px; }
+.map { flex: none; width: 216px; height: 104px; border: 1px solid var(--line); border-radius: var(--r); background: var(--surface); overflow: hidden; }
+.map svg { display: block; width: 100%; height: 100%; }
+.map text { font: 600 13px var(--sans); fill: var(--soft); paint-order: stroke; stroke: var(--surface); stroke-width: 3px; }
+
+/* priced */
+.cust { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 10px 32px; }
+.cust .c { font-size: var(--t1); }
+.cust .c .row { display: flex; justify-content: space-between; gap: 8px; }
+.cust .c .row span:first-child { color: var(--soft); }
+.cust .c .bar { height: 2px; margin-top: 5px; background: var(--line); }
+.cust .c .bar i { display: block; height: 100%; background: var(--risk); }
+.health-line { margin-top: 10px; font-size: var(--t1); color: var(--mut); }
+
+/* contract: the clause reads in the PDF's own voice */
+.clauses { display: grid; gap: 10px; }
+.clause { padding-left: 14px; border-left: 2px solid var(--line); }
+.clause.lead { padding: 14px 18px 12px; background: var(--surface); border: 1px solid var(--line); border-left: 2px solid var(--agent); border-radius: 0 var(--r) var(--r) 0; }
+.clause blockquote { font: 400 var(--t2)/1.6 var(--serif); font-style: normal; color: var(--ink); }
+.clause details summary { cursor: pointer; font-size: var(--t1); color: var(--mut); }
+.clause details summary:hover { color: var(--ink); }
+.clause details[open] summary { margin-bottom: 6px; }
+.clause cite { display: flex; flex-wrap: wrap; gap: 4px 16px; margin-top: 8px; font-style: normal; font-size: var(--t1); color: var(--mut); }
+.ok { display: inline-flex; align-items: center; gap: 4px; color: var(--saved); font-weight: 600; }
+.ok svg { width: 13px; height: 13px; }
+
+/* decision */
+.opts { display: grid; gap: 8px; }
+.opt { display: grid; grid-template-columns: 16px minmax(0, 1fr) auto; gap: 12px; align-items: center; padding: 10px 16px; border: 1px solid var(--line); border-radius: var(--r); background: var(--surface); cursor: pointer; }
+.opt:hover { border-color: var(--line2); }
+.opt input { appearance: none; width: 16px; height: 16px; border: 1.5px solid var(--line2); border-radius: 50%; display: grid; place-content: center; cursor: pointer; }
+.opt input:checked { border-color: var(--agent); }
+.opt input:checked::after { content: ""; width: 8px; height: 8px; border-radius: 50%; background: var(--agent); }
+.opt input:focus-visible { outline: 2px solid var(--agent); outline-offset: 2px; }
+.opt:has(input:checked) { border-color: var(--agent); box-shadow: inset 2px 0 0 var(--agent); }
+.opt .t { font-weight: 600; }
+.opt .m { font-size: var(--t1); color: var(--soft); }
+.why { margin-top: 8px; font-size: var(--t1); color: var(--soft); }
+.trace-btn { margin-left: 8px; }
+.trace { margin-top: 8px; font-size: var(--t1); color: var(--soft); }
+
+/* decision card: flat white, 2 px ink top rule, the number in ink over a risk bar */
+.card { position: sticky; top: 16px; padding: 20px 24px 24px; border: 1px solid var(--line); border-top: 2px solid var(--ink); border-radius: 0 0 var(--r) var(--r); background: var(--surface); }
+.card .lbl { display: block; font-size: var(--t1); color: var(--mut); }
+.card.won .top-lbl { color: var(--saved); font-weight: 600; }
+.fig { display: inline-block; margin-top: 4px; font: 700 var(--t4)/1.05 var(--sans); letter-spacing: -.02em; color: var(--ink); }
+.fig .u { letter-spacing: 0; }
+.fig::after { content: ""; display: block; height: 4px; margin-top: 10px; background: var(--risk); }
+.card.won .fig::after { background: var(--saved); }
+.clock { display: flex; align-items: baseline; gap: 8px; margin-top: 16px; padding: 8px 12px; border-radius: var(--r); background: var(--deadline-wash); color: var(--deadline); font-size: var(--t1); }
+.clock b { font-size: var(--t2); font-weight: 700; }
+.act { margin-top: 20px; padding-top: 16px; border-top: 1px solid var(--line); }
+.act .t { font-weight: 600; margin-top: 2px; }
+.gate { margin-top: 10px; padding-top: 10px; border-top: 1px solid var(--line); font-size: var(--t1); color: var(--soft); }
+.gate.block { color: var(--ink); font-weight: 600; }
+.btn { display: inline-flex; align-items: center; height: 44px; padding: 0 18px; border-radius: var(--r); font-weight: 600; font-size: var(--t2); border: 1px solid var(--line2); background: var(--surface); }
+.btn.primary { background: var(--agent); border-color: var(--agent); color: #fff; }
+.btn.primary:hover:not(:disabled) { background: var(--agent-dk); border-color: var(--agent-dk); }
+.card .btn.primary { width: 100%; justify-content: center; margin-top: 16px; text-align: center; }
+.card .btn.primary:disabled { background: var(--ground); border-color: var(--line); color: var(--mut); cursor: not-allowed; }
+.done-line { margin-top: 16px; padding: 2px 0 2px 12px; border-left: 2px solid var(--saved); color: var(--saved); font-size: var(--t1); }
+
+/* phone: stages stack, the card becomes a fixed bottom bar */
+@media (max-width: 760px) {
+  .wrap { padding: 0 16px; }
+  .top { height: auto; padding: 8px 0; flex-wrap: wrap; row-gap: 8px; }
+  .tools { width: 100%; justify-content: space-between; }
+  .brand .clock-s { display: none; }
+  .strip { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  .inc { padding: 8px 12px 10px; gap: 4px; }
+  .inc + .inc { border-left: 0; }
+  .inc:nth-child(odd) { padding-left: 0; }
+  .inc:nth-child(even) { border-left: 1px solid var(--line); }
+  .inc:nth-child(n+3) { border-top: 1px solid var(--line); }
+  .strip-note { grid-column: span 1; padding-left: 12px; }
+  .case { grid-template-columns: minmax(0, 1fr); padding: 16px 0 112px; }
+  .card .why { display: none; }
+  .card .gate { border: 0; padding: 0; }
+  .opt { grid-template-columns: 16px minmax(0, 1fr); row-gap: 0; padding: 8px 12px; }
+  .opt .m { grid-column: 2; }
+  .stage { grid-template-columns: minmax(0, 1fr); gap: 4px; padding: 12px 0; }
+  .caught { flex-direction: column; align-items: stretch; gap: 8px; }
+  .map { width: 100%; height: 88px; }
+  .cust { grid-template-columns: minmax(0, 1fr); }
+  .clause.lead { padding: 12px 14px 10px; }
+  .card { position: fixed; top: auto; left: 0; right: 0; bottom: 0; z-index: 10; border-radius: 0; border-width: 2px 0 0; padding: 10px 16px calc(10px + env(safe-area-inset-bottom));
+          display: grid; grid-template-columns: minmax(0, 1fr) auto; column-gap: 12px; align-items: center; }
+  .card .lbl.top-lbl { display: none; }
+  .card .fig { justify-self: start; margin-top: 0; font-size: var(--t3); letter-spacing: -.01em; grid-column: 1; grid-row: 1; }
+  .card .fig::after { height: 2px; margin-top: 3px; }
+  .card .clock, .card .done-line { grid-column: 1; grid-row: 2; margin-top: 4px; padding: 0; background: none; border: 0; }
+  .card .clock b { font-size: var(--t1); }
+  .card .act { display: contents; }
+  .card .act .lbl, .card .act .t { display: none; }
+  .card .gate { grid-column: 1 / -1; grid-row: 3; margin-top: 4px; }
+  .card .btn.primary { grid-column: 2; grid-row: 1 / span 2; width: auto; margin-top: 0; }
+}
+@media (prefers-reduced-motion: reduce) { *, *::before, *::after { transition: none !important; animation: none !important; } }
+</style>
+</head>
+<body>
+<div class="wrap">
+  <header class="top">
+    <div class="brand"><strong>Tarangini control tower</strong><span class="clock-s">Fri 13 Nov 2026, 10:40 IST</span></div>
+    <div class="tools">
+      <a class="quiet" href="#data-health" title="Data health is a second page, not built in this mockup">Data health</a>
+      <div class="viewas"><span id="roleNote" class="role-note">View as</span>
+        <div class="seg" role="radiogroup" aria-label="View as">
+          <button role="radio" data-role="asha" aria-checked="true" title="Asha, VP Operations, all of India">Asha</button>
+          <button role="radio" data-role="kiran" aria-checked="false" title="Kiran, dispatcher, Hyderabad only, phones masked">Kiran</button>
+          <button role="radio" data-role="meera" aria-checked="false" title="Meera, finance, cannot execute">Meera</button>
+        </div>
+      </div>
+    </div>
+  </header>
+
+  <nav class="strip" id="strip" aria-label="This morning's incidents, largest first"></nav>
+
+  <main class="case">
+    <div>
+      <section class="head"><h1 id="title"></h1><p id="lede"></p></section>
+      <ol class="stages">
+        <li class="stage"><div class="rail"><span class="n">1</span><h2>Caught</h2></div>
+          <div><p class="say" id="sCaught"></p><div class="art caught"><div class="facts" id="facts"></div><div class="map" id="map" aria-hidden="true"></div></div></div></li>
+        <li class="stage"><div class="rail"><span class="n">2</span><h2>Priced</h2></div>
+          <div><p class="say" id="sPriced"></p><div class="art"><div class="cust" id="cust"></div><p class="health-line" id="healthLine" hidden></p></div></div></li>
+        <li class="stage"><div class="rail"><span class="n">3</span><h2>Contract</h2></div>
+          <div><p class="say" id="sContract"></p><div class="art clauses" id="clauses"></div></div></li>
+        <li class="stage"><div class="rail"><span class="n">4</span><h2>Decision</h2></div>
+          <div><p class="say"><span id="sDecision"></span> <button class="quiet trace-btn" id="traceBtn" aria-expanded="false" aria-controls="trace">Show trace</button></p><div class="art"><div class="opts" id="opts" role="radiogroup" aria-label="Proposed fixes"></div>
+            <p class="trace" id="trace" hidden></p></div></div></li>
+      </ol>
+    </div>
+
+    <aside class="card" id="card" aria-live="polite">
+      <span class="lbl top-lbl" id="figLbl">At risk</span>
+      <span class="fig" id="fig"></span>
+      <div class="clock" id="clock"><b id="clockT"></b><span id="clockS"></span></div>
+      <p class="done-line" id="doneLine" hidden></p>
+      <div class="act" id="act">
+        <span class="lbl">Recommended</span>
+        <p class="t" id="actT"></p>
+        <p class="why" id="why"></p>
+        <p class="gate" id="gate"></p>
+      </div>
+      <button class="btn primary" id="approve">Approve</button>
+    </aside>
+  </main>
+</div>
+
+<script src="data.js"></script>
+<script src="../india.js"></script>
+<script>
+(() => {
+  const C = window.CT2, NET = C.network;
+  const NOW = new Date(C.now).getTime(), T0 = performance.now();
+  const GATE = 500000;
+  const SHORT = { 1: "NH44 closure", 2: "Kolkata conveyor down", 3: "Ganga Freight strike", 4: "Odisha cyclone watch", 5: "Supplier 5 days late", 6: "Yamuna Expressway fog" };
+  const SOURCE = { imd: "An IMD weather alert", carrier_notice: "A carrier strike notice", dc_ops: "A warehouse floor report", supplier_edi: "The supplier's dispatch feed" };
+  const ROLE = { asha: "Asha", kiran: "Kiran", meera: "Meera" };
+  const reduced = matchMedia("(prefers-reduced-motion: reduce)").matches;
+  const $ = (id) => document.getElementById(id);
+
+  // formatting: Indian grouping in full, lakh / crore short
+  const inr = (n) => "Rs " + Math.round(n).toLocaleString("en-IN");
+  const lakh = (n) => n >= 1e7 ? "Rs " + (n / 1e7).toFixed(2) + " Cr" : n >= 1e5 ? "Rs " + (n / 1e5).toFixed(2) + " L" : inr(n);
+  const ist = (iso) => { const d = new Date(new Date(iso).getTime() + 330 * 60000); return String(d.getUTCHours()).padStart(2, "0") + ":" + String(d.getUTCMinutes()).padStart(2, "0"); };
+  const plural = (n, w) => n + " " + w + (n === 1 ? "" : "s");
+  const esc = (s) => String(s).replace(/[&<>"]/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" })[c]);
+  // the signature: every rupee figure gets a light unit and bold digits, wherever it appears (incl. model text)
+  const seps = (d) => d.replace(/[,.:]/g, '<i class="sep">$&</i>');
+  const MONEY = /Rs\s?(\d{1,3}(?:,\d{2,3})*(?:\.\d+)?)(?:\s(L|Cr)\b)?/g;
+  const rich = (s) => esc(s).replace(MONEY, (m, d, u) => '<span class="rs num"><span class="u">Rs</span> <span class="d">' + seps(d) + "</span>" + (u ? ' <span class="u">' + u + "</span>" : "") + "</span>");
+  const cnt = (n, w) => '<span class="cnt"><span class="d">' + n + '</span> <span class="u">' + w + (n === 1 ? "" : "s") + "</span></span>";
+  const sect = (s) => String(s).replace(/MSA-(\d+(\.\d+)?)/g, "section $1").replace(/\bC([1-3])\b/g, (m) => carrier(m).name);
+  const dcCity = (id) => (NET.warehouses.find((w) => w.id === id)?.city || id).replace(/\s*\(.*\)/, "");
+  const carrier = (id) => NET.carriers.find((c) => c.id === id);
+  const listWords = (a) => a.length <= 2 ? a.join(" and ") : a.slice(0, -1).join(", ") + " and " + a[a.length - 1];
+
+  const state = { role: "asha", id: null, pick: {}, done: {} };
+  const incidents = C.incidents.slice().sort((a, b) => a.rank - b.rank);
+  const visible = () => incidents.filter((i) => state.role !== "kiran" || C.briefs[i.id].chain.warehouses.some((w) => w.id === "DC-HYD"));
+  const maskPhone = (p) => state.role === "kiran" ? p.slice(0, 6) + "••• •••" + p.slice(-2) : p;
+
+  // plain-language option titles
+  function optTitle(p) {
+    if (p.action_type === "notify_customers") return "Tell the " + plural(p.params.customers.length, "affected customer") + " now";
+    if (p.action_type === "update_eta") return "Send new delivery times for " + plural(p.shipment_ids.length, "shipment");
+    if (p.action_type === "swap_carrier") return "Move " + plural(p.shipment_ids.length, "shipment") + " to " + carrier(p.params.moves[0].to_carrier).name;
+    return p.title;
+  }
+  const net = (p) => p.est_saving_inr - p.est_cost_inr;
+  const best = (b) => b.playbooks.reduce((a, p) => (net(p) > net(a) ? p : a), b.playbooks[0]);
+
+  function lede(b) {
+    const m = b.money, top = best(b);
+    if (m.waivable_inr > 0 && m.notify_deadline) return (m.waivable_inr >= m.net_inr - 1 ? "All of it is" : lakh(m.waivable_inr) + " is") + " waived if customers are told before " + ist(m.notify_deadline) + ".";
+    if (net(top) > 0) return "Moving the shipments to another carrier saves " + (top.est_saving_inr >= m.net_inr - 1 ? "all of it" : lakh(top.est_saving_inr)) + ", but it moves " + lakh(top.goods_value_inr) + " of goods.";
+    return "No fix saves more than it costs, so customers get warned and the penalty is absorbed.";
+  }
+
+  // small cropped locator: warehouse(s) to destination cities
+  function map(b) {
+    const W = 216, H = 104, pts = [];
+    const whs = b.chain.warehouses.map((w) => NET.warehouses.find((x) => x.id === w.id)).filter(Boolean);
+    const cities = b.chain.cities.map((c) => NET.zones.find((z) => z.id === c.id)).filter(Boolean);
+    whs.concat(cities).forEach((p) => pts.push([p.lon, p.lat]));
+    const inc = b.incident; let hub = null;
+    if (inc.lat != null) pts.push([inc.lon, inc.lat]);
+    if (inc.supplier_id) { hub = NET.suppliers.find((s) => s.id === inc.supplier_id); if (hub) pts.push([hub.lon, hub.lat]); }
+    let x0 = Math.min(...pts.map((p) => p[0])), x1 = Math.max(...pts.map((p) => p[0]));
+    let y0 = Math.min(...pts.map((p) => p[1])), y1 = Math.max(...pts.map((p) => p[1]));
+    const lat0 = (y0 + y1) / 2, kx = Math.cos(lat0 * Math.PI / 180);
+    let sw = (x1 - x0) * kx, sh = y1 - y0; const pad = 1.4;
+    sw += pad * 2; sh += pad * 2;
+    const box = Math.max(sw / W, sh / H, 5 / H);
+    const cx = (x0 + x1) / 2 * kx, cy = (y0 + y1) / 2;
+    const P = (lon, lat) => [W / 2 + (lon * kx - cx) / box, H / 2 - (lat - cy) / box];
+    const land = window.INDIA.map((ring) => "M" + ring.map((q) => P(q[0], q[1]).map((v) => v.toFixed(1)).join(",")).join("L") + "Z").join("");
+    let s = '<svg viewBox="0 0 ' + W + " " + H + '"><path d="' + land + '" fill="var(--ground)" stroke="var(--line)" stroke-width="1"/>';
+    if (inc.lat != null && inc.radius_km) { const [a, c] = P(inc.lon, inc.lat); s += '<circle cx="' + a + '" cy="' + c + '" r="' + Math.max(6, inc.radius_km / 111 / box) + '" fill="var(--risk-wash)" stroke="var(--risk)" stroke-dasharray="3 3"/>'; }
+    whs.forEach((w) => cities.forEach((z) => { if (z.serving_dc !== w.id && whs.length > 1) return; const [a, c] = P(w.lon, w.lat), [d, e] = P(z.lon, z.lat); s += '<line x1="' + a + '" y1="' + c + '" x2="' + d + '" y2="' + e + '" stroke="var(--risk)" stroke-width="1.5" opacity=".55"/>'; }));
+    if (hub) { const [a, c] = P(hub.lon, hub.lat); s += '<rect x="' + (a - 4) + '" y="' + (c - 4) + '" width="8" height="8" fill="var(--risk)"/>'; }
+    cities.forEach((z) => { const [a, c] = P(z.lon, z.lat); s += '<circle cx="' + a + '" cy="' + c + '" r="3" fill="var(--risk)"/>'; });
+    const label = (x, y, t) => { const right = x > W - 70; s += '<text x="' + (right ? x - 8 : x + 8) + '" y="' + (y + 4) + '" text-anchor="' + (right ? "end" : "start") + '">' + esc(t) + "</text>"; };
+    whs.forEach((w) => { const [a, c] = P(w.lon, w.lat); s += '<circle cx="' + a + '" cy="' + c + '" r="4.5" fill="var(--ink)"/>'; label(a, c, dcCity(w.id)); });
+    if (cities.length === 1) { const z = cities[0], [a, c] = P(z.lon, z.lat); label(a, c, z.city); }
+    return s + "</svg>";
+  }
+
+  function renderStrip() {
+    const vis = visible(), max = Math.max(...incidents.map((i) => i.gross_inr));
+    $("strip").innerHTML = vis.map((i) => {
+      const d = state.done[i.id];
+      const amt = d ? (d.saved > 0 ? lakh(d.saved) + " avoided" : "Handled") : lakh(i.gross_inr);
+      return '<button class="inc' + (d ? " done" : "") + '" data-id="' + i.id + '" aria-current="' + (i.id === state.id) + '"><span class="name">' + SHORT[i.id] + '</span><span class="row"><span class="bar"><i style="width:' + (i.gross_inr / max * 100).toFixed(1) + '%"></i></span><span class="amt num">' + rich(amt) + '</span></span></button>';
+    }).join("") + (state.role === "kiran" ? '<p class="strip-note">Kiran sees Hyderabad incidents only.</p>' : "");
+  }
+
+  function render() {
+    const b = C.briefs[state.id], inc = b.incident, m = b.money, ag = b.agent, fb = ag.outcome !== "ok";
+    if (!state.pick[state.id]) state.pick[state.id] = best(b).id;
+    const p = b.playbooks.find((x) => x.id === state.pick[state.id]);
+    renderStrip();
+    $("title").textContent = inc.title;
+    $("lede").innerHTML = rich(lede(b));
+
+    // 1 caught
+    const whs = b.chain.warehouses.map((w) => dcCity(w.id)), cities = b.chain.cities.map((c) => c.label);
+    const lane = listWords(whs) + (whs.length > 1 ? " warehouses" : " warehouse") + " to " + (cities.length <= 2 ? listWords(cities) : cities.slice(0, 2).join(", ") + " and " + plural(cities.length - 2, "more city").replace("citys", "cities"));
+    const topCar = carrier(b.chain.carriers.slice().sort((a, c) => c.shipments - a.shipments)[0].id);
+    $("sCaught").textContent = SOURCE[inc.source] + " at " + ist(inc.started_at) + ". The agent found every shipment it touches.";
+    $("facts").innerHTML = '<span class="big num">' + cnt(m.shipments, "shipment") + "</span><span>" + rich(inr(m.value_inr)) + " of goods</span><span>" + esc(lane) + "</span><span>" + (b.chain.carriers.length > 1 ? "Most with " : "All with ") + esc(topCar.name) + ', desk <span class="num">' + maskPhone(topCar.dispatch_phone) + "</span></span>";
+    $("map").innerHTML = map(b);
+
+    // 2 priced
+    const late = m.max_days_late;
+    $("sPriced").textContent = "Code, not the model, priced the penalty from each customer's contract" + (late > 0 ? ": up to " + plural(late, "day") + " late." : m.fill_inr > 0 ? ": all of it is for short-filled orders." : ".");
+    const custs = m.top_customers.filter((c) => c.net_inr > 0), shown = custs.slice(0, 4), cmax = Math.max(...shown.map((c) => c.net_inr));
+    const totalCust = (b.playbooks.find((x) => x.action_type === "notify_customers")?.params.customers.length) || custs.length;
+    const restAmt = m.net_inr - shown.reduce((s, c) => s + c.net_inr, 0), restN = totalCust - shown.length;
+    let ch = shown.map((c) => '<div class="c"><div class="row"><span>' + esc(c.customer) + '</span><span class="num">' + rich(inr(c.net_inr)) + '</span></div><div class="bar"><i style="width:' + (c.net_inr / cmax * 100).toFixed(1) + '%"></i></div></div>').join("");
+    if (restN > 0 && restAmt >= 1) ch += '<div class="c"><div class="row"><span>' + plural(restN, "more customer") + '</span><span class="num">' + rich(inr(restAmt)) + "</span></div></div>";
+    $("cust").innerHTML = ch;
+    $("healthLine").hidden = !m.unverified_rows;
+    $("healthLine").innerHTML = m.unverified_rows ? plural(m.unverified_rows, "shipment") + " priced from figures that failed a source check; flagged in <a class=\"quiet\" href=\"#data-health\">data health</a>." : "";
+
+    // 3 contract: the clause the chosen fix cites comes first
+    const cl = b.clauses.slice().sort((a, c) => (c.clause_id === p.clause_id) - (a.clause_id === p.clause_id));
+    const chains = [...new Set(cl.map((c) => c.chain))];
+    $("sContract").textContent = "The agent quoted " + (cl.length > 1 ? "the clauses" : "the clause") + " from " + listWords(chains.map((c) => c + "'s")) + " contract; code checked " + (cl.length > 1 ? "each quote" : "the quote") + " against the PDF.";
+    const tick = '<svg viewBox="0 0 16 16" aria-hidden="true"><path d="M3 8.5l3.2 3L13 4.5" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>';
+    const cite = (c) => '<span>' + esc(c.heading) + ", " + esc(c.chain) + " service agreement, section " + c.clause_id.replace("MSA-", "") + ", page " + c.page + "</span>" + (c.verified ? '<span class="ok">' + tick + "Matches the PDF</span>" : "");
+    const quote = (c) => "<blockquote>“" + rich(c.text) + "”</blockquote>";
+    $("clauses").innerHTML = cl.map((c, i) => i === 0
+      ? '<div class="clause lead">' + quote(c) + "<cite>" + cite(c) + "</cite></div>"
+      : '<div class="clause"><details><summary>Also quoted: ' + esc(c.heading.toLowerCase()) + ", section " + c.clause_id.replace("MSA-", "") + ", page " + c.page + (c.verified ? ", matches the PDF" : "") + "</summary>" + quote(c) + "</details></div>").join("");
+
+    // 4 decision
+    $("sDecision").textContent = fb ? "The model returned no valid plan, so a rule picked from the priced fixes." : "The agent proposed " + plural(b.playbooks.length, "fix").replace("fixs", "fixes") + "; code priced each one.";
+    $("opts").innerHTML = b.playbooks.map((x) => {
+      const bits = [];
+      bits.push(x.est_saving_inr > 0 ? "Saves " + inr(x.est_saving_inr) : "Saves no penalty");
+      bits.push(x.est_cost_inr > 0 ? "costs " + inr(x.est_cost_inr) : "no cost");
+      if (x.goods_value_inr > 0) bits.push("moves " + lakh(x.goods_value_inr) + " of goods");
+      return '<label class="opt"><input type="radio" name="opt" value="' + x.id + '"' + (x.id === p.id ? " checked" : "") + (state.done[state.id] ? " disabled" : "") + '><span class="t">' + esc(optTitle(x)) + '</span><span class="m num">' + rich(bits.join(", ")) + "</span></label>";
+    }).join("");
+    $("why").innerHTML = rich(fb ? "Chosen by a rule: the model returned no valid plan." : "Agent's reason: " + sect(p.rationale));
+    const toks = ag.prompt_tokens + ag.completion_tokens;
+    const steps = ag.steps.filter((s) => s.tool === "get_clause").length;
+    $("trace").innerHTML = rich((ag.ms / 1000).toFixed(1) + " s, " + toks.toLocaleString("en-IN") + " tokens, " + plural(ag.llm_calls, "model call") + ", Rs 0 per run on a local model (" + ag.model + "). It read the incident, found the shipments, asked code for the price, searched the contracts " + plural(steps, "time") + " and proposed the plan." + (fb ? " Outcome: no valid proposal, so the rule plan was used." : " Every figure and quote passed the checks."));
+    renderCard(b, p);
+  }
+
+  function renderCard(b, p) {
+    const m = b.money, d = state.done[state.id], card = $("card");
+    card.classList.toggle("won", !!(d && d.saved > 0));
+    $("figLbl").textContent = d ? (d.saved > 0 ? "Avoided" : "Still owed, customers warned") : "At risk";
+    if (!d) $("fig").innerHTML = rich(inr(m.net_inr));
+    const dl = m.notify_deadline && !d;
+    $("clock").hidden = !dl;
+    $("doneLine").hidden = !d;
+    if (d) $("doneLine").innerHTML = rich(d.line);
+    $("act").hidden = !!d;
+    $("actT").textContent = optTitle(p);
+    const big = p.goods_value_inr > GATE;
+    const btn = $("approve");
+    let gate = big ? "Moves " + lakh(p.goods_value_inr) + " of goods, so it needs Asha's approval." : "Moves no goods, so a dispatcher can approve it.";
+    let off = false;
+    if (state.role === "meera") { gate = "Finance cannot execute. Meera can see the money, not act on it."; off = true; }
+    else if (big && state.role !== "asha") { off = true; }
+    $("gate").innerHTML = rich(gate);
+    $("gate").classList.toggle("block", off);
+    btn.disabled = off || !!d;
+    btn.hidden = !!d;
+    btn.textContent = big && state.role === "asha" ? "Approve as Asha" : "Approve";
+    tick();
+  }
+
+  // countdown from the 10:40 scenario clock, running in real time
+  function tick() {
+    const m = C.briefs[state.id].money;
+    if (!m.notify_deadline || state.done[state.id]) return;
+    const left = Math.max(0, new Date(m.notify_deadline).getTime() - (NOW + (performance.now() - T0)));
+    const s = Math.floor(left / 1000), h = Math.floor(s / 3600), mm = Math.floor(s % 3600 / 60), ss = s % 60;
+    $("clockT").innerHTML = seps((h ? h + ":" + String(mm).padStart(2, "0") : mm) + ":" + String(ss).padStart(2, "0"));
+    $("clockS").textContent = left ? "left to tell customers, until " + ist(m.notify_deadline) : "Window closed at " + ist(m.notify_deadline);
+  }
+  setInterval(tick, 1000);
+
+  // this world swaps instantly: only the countdown digits move
+  function countUp(to) { $("fig").innerHTML = rich(inr(to)); }
+
+  $("approve").addEventListener("click", () => {
+    const b = C.briefs[state.id], p = b.playbooks.find((x) => x.id === state.pick[state.id]);
+    const saved = p.est_saving_inr;
+    const who = ROLE[state.role], at = "10:" + String(40 + Math.floor((performance.now() - T0) / 60000)).padStart(2, "0");
+    let line = "Approved by " + who + " at " + at + ". ";
+    if (p.action_type === "notify_customers") line += plural(p.params.customers.length, "customer") + " told" + (saved > 0 ? "; section " + p.clause_id.replace("MSA-", "") + " waives the penalty." : ".");
+    else if (p.action_type === "swap_carrier") line += plural(p.shipment_ids.length, "shipment") + " moved to " + carrier(p.params.moves[0].to_carrier).name + " for " + inr(p.est_cost_inr) + ".";
+    else line += "New delivery times sent for " + plural(p.shipment_ids.length, "shipment") + ".";
+    state.done[state.id] = { saved, line };
+    const from = state.id;
+    renderCard(b, p);
+    document.querySelectorAll("#opts input").forEach((i) => (i.disabled = true));
+    if (saved > 0) countUp(saved);
+    renderStrip();
+    // advance to the next open incident
+    setTimeout(() => {
+      if (state.id !== from) return;
+      const vis = visible(), idx = vis.findIndex((i) => i.id === from);
+      const next = vis.slice(idx + 1).concat(vis.slice(0, idx)).find((i) => !state.done[i.id]);
+      if (next) { state.id = next.id; render(); }
+    }, 2200);
+  });
+
+  $("strip").addEventListener("click", (e) => { const t = e.target.closest(".inc"); if (!t) return; state.id = +t.dataset.id; render(); });
+  $("opts").addEventListener("change", (e) => { state.pick[state.id] = +e.target.value; render(); });
+  $("traceBtn").addEventListener("click", () => {
+    const open = $("traceBtn").getAttribute("aria-expanded") !== "true";
+    $("traceBtn").setAttribute("aria-expanded", open); $("trace").hidden = !open; $("traceBtn").textContent = open ? "Hide trace" : "Show trace";
+  });
+  document.querySelectorAll(".seg button").forEach((bt) => bt.addEventListener("click", () => {
+    state.role = bt.dataset.role;
+    document.querySelectorAll(".seg button").forEach((x) => x.setAttribute("aria-checked", x === bt));
+    if (!visible().some((i) => i.id === state.id)) state.id = visible()[0].id;
+    render();
+  }));
+
+  // open on the case with the running deadline: NH44
+  state.id = 1;
+  render();
+})();
+</script>
+</body>
+</html>
