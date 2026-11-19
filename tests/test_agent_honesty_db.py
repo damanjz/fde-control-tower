@@ -7,6 +7,7 @@ import json
 
 import pytest
 
+from evals import scoring
 from tests.world import NOW
 from tower import agent
 from tower.access import USERS
@@ -121,7 +122,8 @@ def test_playbook_count_duplicates_and_wrong_kind_are_rejected(ctx):
     c = ctx()
     one = good_args(c)
     one["playbooks"] = one["playbooks"][:1]
-    assert any("between 2 and 4" in e for e in agent.check_proposal(c, one)[2])
+    count = [e for e in agent.check_proposal(c, one)[2] if "between 2 and 4" in e]
+    assert count and scoring.catch_kind(count[0]) == "playbook count"      # the eval report files the real message correctly
     dup = good_args(c)
     dup["playbooks"][1] = dict(dup["playbooks"][0])
     assert any("one playbook per action type" in e for e in agent.check_proposal(c, dup)[2])

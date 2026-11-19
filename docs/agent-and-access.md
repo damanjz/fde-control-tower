@@ -102,15 +102,16 @@ message, 8k context, one model call at a time) with these tools, all scoped to t
 | `compute_exposure` | the deterministic exposure: late and fill penalties, waived, waivable, deadline, top customers and chains |
 | `get_clause` | hybrid retrieval (full text and vector, reciprocal rank fusion) over the contract chunks: chain, clause id, page, text |
 | `list_options` | every buildable action priced by code: alternative DCs and carriers with spare trucks, stock at other DCs |
-| `propose_playbooks` | the finish: a summary and 2 to 4 playbooks (action type, params, clause id, chain, exact quote, rationale) |
+| `propose_playbooks` | the finish: a summary and 2 to 4 playbooks, or 1 when only one kind of action is open (action type, params, clause id, chain, exact quote, rationale) |
 
 Honesty checks run in code on the final call. It is rejected, with the reasons handed back to the model, when: a quoted clause or
 chain is not a stored chunk the user may read, or the quote is not an exact excerpt of it; a clause id in the text was never
 returned by `get_clause`; a rupee figure in the summary or a rationale does not match a number in a tool output (lakh and crore
 forms are checked at their printed precision); a shipment id is not an affected shipment the user may see; the playbook count is
-not 2 to 4, an action type repeats, or an action does not fit the incident kind (for example a stock transfer for a storm).
+not 2 to 4 (1 to 4 when only one kind of action is open), an action type repeats, or an action does not fit the incident kind
+(for example a stock transfer for a storm).
 The model gets one retry. A second failure, a model that never proposes, or an unreachable Ollama gives a deterministic
-**agent fallback** brief (summary and 2 to 4 playbooks chosen by rule from the same priced options), marked `outcome = fallback`
+**agent fallback** brief (summary and up to 4 playbooks chosen by rule from the same priced options), marked `outcome = fallback`
 with the reason, and the playbooks marked `source = fallback`.
 
 Playbooks have: action type (`notify_customers`, `reroute_via_dc`, `swap_carrier`, `stock_transfer`, `update_eta`), parameters, goods

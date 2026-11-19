@@ -1,6 +1,6 @@
 # Triage eval report
 
-Generated 2026-11-20 03:09. 43 cases; gold from the deterministic engine (`evals/gold.py`), no LLM judge. A case passes when every criterion that applies to it passed.
+Generated 2026-11-20 04:57. 43 cases; gold from the deterministic engine (`evals/gold.py`), no LLM judge. A case passes when every criterion that applies to it passed.
 
 Results: agent `run7-agent.jsonl`, rules `run2-rules.jsonl`, notools `run2-notools.jsonl`
 
@@ -51,10 +51,8 @@ A catch is a proposal the agent's own code rejected (it then retried once, or fe
 
 | catch | count |
 |---|---|
-| playbook count | 4 |
-| other: give between 1 and 4 playbooks, one per  | 1 |
-| other: playbook 1 (notify_customers) | 2 |
-| other: playbook 1 (update_eta) | 1 |
+| no shipments in scope to act on | 3 |
+| playbook count | 5 |
 
 Fallback reasons: honesty checks failed twice (2)
 

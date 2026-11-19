@@ -122,7 +122,7 @@ approve-before-execute actions with an audit trail. Details, the exact delay and
 - **Impact and money**: per incident, which shipments are hit and how late, and the penalty from the contract (1.5% a day capped at
   10%, 2% fill-rate, 6 hour force-majeure waiver). Incidents are ranked by exposure.
 - **Triage agent** (`fusion27b:iq3` on Ollama): tools for incident, affected shipments, exposure, contract clauses, options; ends
-  with 2 to 4 playbooks. Code checks every quote, rupee figure and shipment id; one retry, then a marked deterministic fallback.
+  with 2 to 4 playbooks (1 when only one kind of action is open). Code checks every quote, rupee figure and shipment id; one retry, then a marked deterministic fallback.
 - **Roles**: asha (VP Operations), kiran (Dispatcher South, DC-HYD only), meera (Finance). One scoped data layer for every
   endpoint and tool: row filter and field masking before data leaves it.
 - **Actions**: up to Rs 5,00,000 of goods moved runs at once; above that it waits for asha. One transaction, outbox message to the

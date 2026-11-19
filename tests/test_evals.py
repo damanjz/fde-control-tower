@@ -174,6 +174,12 @@ def test_agent_catches_are_classified():
     assert scoring.catch_kind("clause MSA-12.4 was not returned by get_clause") == "clause cited before fetching"
     assert scoring.catch_kind("rupee figure not from any tool output: 999,999. Use only") == "invented rupee figure"
     assert scoring.catch_kind("something new: x").startswith("other")
+    # Regression: the count message says "between 1 and 4" when only one kind of action is open, and was filed under other
+    for lo in (1, 2):
+        assert scoring.catch_kind(f"give between {lo} and 4 playbooks, one per kind of action, only from the options") == "playbook count"
+    assert scoring.catch_kind("give between 1 and 4 playbooks, only from the options list_options shows") == "playbook count"
+    refused = "playbook 1 (update_eta): no affected shipments in your scope for this incident"
+    assert scoring.catch_kind(refused) == "no shipments in scope to act on"
 
 
 # ------------------------------------------------------------------ GPU guard

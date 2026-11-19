@@ -258,9 +258,11 @@ CATCH_KINDS = (
     ("not an exact excerpt", "quote not in the clause"),
     ("is not a stored clause", "unknown clause or chain"),
     ("is not an affected shipment you may see", "out-of-scope shipment id"),
+    ("no affected shipments in your scope", "no shipments in scope to act on"),
     ("costs more than the penalty", "losing move"),
     ("does not apply to", "action does not fit the incident"),
-    ("between 2 and 4", "playbook count"),
+    # the lower bound in the agent's message varies ("between 1 and 4" when only one kind of action is open)
+    ("and 4 playbooks", "playbook count"),
     ("one playbook per action type", "repeated action type"),
 )
 
