@@ -107,8 +107,9 @@ def register(app: FastAPI, settings: Settings, clock: Clock) -> None:
     def triage(incident_id: int, request: Request, body: dict | None = Body(default=None), user: User = Depends(current_user),
                st: ScopedStore = Depends(store)):
         try:
-            return agent.triage(request.app.state.pool, settings, clock, user, st, incident_id,
-                                use_cache=bool((body or {}).get("use_cache")))
+            out = agent.triage(request.app.state.pool, settings, clock, user, st, incident_id,
+                               use_cache=bool((body or {}).get("use_cache")))
+            return {k: out[k] for k in ("run", "playbooks", "cached")}   # the response shape; the rest is for direct callers
         except LookupError:
             raise HTTPException(404, "no such incident") from None
 

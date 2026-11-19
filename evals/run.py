@@ -234,7 +234,7 @@ def run_agent(env: dict, case: dict, built: dict, view: dict) -> dict:
         return {"outcome": "not_visible", "summary": "", "playbooks": [], "fetched_clauses": [],
                 "usage": {"ms": round((time.perf_counter() - t0) * 1000), "prompt_tokens": 0, "completion_tokens": 0, "calls": 0}}
     run = res["run"]
-    fetched = sorted({c for s in run["steps"] if s["tool"] == "get_clause" for c in re.findall(r"MSA-\d+\.\d+", s["result_summary"] or "")})
+    fetched = res["fetched_clauses"] or []   # the clause ids get_clause returned, from the run itself
     pbs = [playbook(p["action_type"], p["params"], p["clause_id"], p["clause_chain"], p["clause_quote"], p["rationale"])
            for p in res["playbooks"]]
     return {"outcome": run["outcome"], "summary": run["summary"] or "", "playbooks": pbs,

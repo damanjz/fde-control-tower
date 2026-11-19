@@ -11,6 +11,7 @@ import json
 import logging
 import re
 import time
+from collections.abc import Callable
 from dataclasses import dataclass, field
 from datetime import datetime
 
@@ -26,6 +27,9 @@ logger = logging.getLogger("tower.agent")
 MAX_LLM_CALLS = 11  # 7 tools in order, up to 2 exact clause fetches, one retry of the proposal
 MAX_TOOL_JSON = 4200
 REQUIRED_BEFORE_PROPOSAL = ("get_incident", "find_affected", "compute_exposure")
+# The model is passed in: (settings, messages, tool specs) -> ChatResult. Ollama (llm.chat) in production, a scripted
+# model in tests/test_agent_loop_db.py, so the run's rules are tested without the GPU.
+ChatFn = Callable[[Settings, list[dict], list[dict] | None], llm.ChatResult]
 
 
 # ------------------------------------------------------------------ formatting and number checks
@@ -284,6 +288,17 @@ TOOL_FUNCS = {"get_incident": tool_get_incident, "find_affected": tool_find_affe
               "compute_exposure": tool_compute_exposure, "get_clause": tool_get_clause, "list_options": tool_list_options}
 
 
+def run_tool(ctx: Ctx, name: str, args: dict | None = None) -> dict:
+    """Run one read tool and keep the run's record of it. The proposal checks read that record (which tools ran and
+    every figure they printed), so the triage loop, the tests and the eval gold all come through here instead of
+    keeping it by hand. A tool that answers with an error is not recorded."""
+    result = TOOL_FUNCS[name](ctx, args or {})
+    if "error" not in result:
+        ctx.called.append(name)
+        ctx.outputs.append(result)
+    return result
+
+
 def summarize(name: str, res: dict) -> str:
     if "error" in res:
         return f"error: {res['error']}"
@@ -434,15 +449,19 @@ def _tool_msg(name: str, res: dict) -> dict:
 
 
 def triage(pool, settings: Settings, clock: Clock, user: User, store: ScopedStore, incident_id: int, *,
-           use_cache: bool = False) -> dict:
-    """Run the agent for one incident as one user. Returns {run, playbooks}. Raises LookupError if not visible."""
+           use_cache: bool = False, chat: ChatFn | None = None) -> dict:
+    """Run the agent for one incident as one user. Returns {run, playbooks, cached, fetched_clauses}; fetched_clauses
+    is the clause ids get_clause returned in this run (None for a cached run). `chat` is the model, Ollama by default.
+    Raises LookupError if not visible."""
     inc = store.incident(incident_id)
     if inc is None:
         raise LookupError("no such incident")
     if use_cache:
         cached = store.latest_run(incident_id)
         if cached:
-            return {"run": cached, "playbooks": store.playbooks(incident_id, role_only=True), "cached": True}
+            return {"run": cached, "playbooks": store.playbooks(incident_id, role_only=True), "cached": True,
+                    "fetched_clauses": None}
+    ask = chat or llm.chat
     started = clock.now()
     with pool.connection() as conn:
         run_id = conn.execute(
@@ -463,7 +482,7 @@ def triage(pool, settings: Settings, clock: Clock, user: User, store: ScopedStor
         ]
         retried = nudged = False
         for _ in range(MAX_LLM_CALLS):
-            res = llm.chat(settings, messages, TOOL_SPECS)
+            res = ask(settings, messages, TOOL_SPECS)
             usage["prompt"] += res.prompt_tokens
             usage["completion"] += res.completion_tokens
             usage["calls"] += 1
@@ -502,13 +521,10 @@ def triage(pool, settings: Settings, clock: Clock, user: User, store: ScopedStor
                         result = {"error": f"you are triaging incident {incident_id}"}
                     else:
                         try:
-                            result = TOOL_FUNCS[call.name](ctx, call.args)
+                            result = run_tool(ctx, call.name, call.args)
                         except Exception as e:   # a tool bug must not kill the run: tell the model, log it
                             log(logger, logging.ERROR, "tool failed", tool=call.name, error=type(e).__name__)
                             result = {"error": f"{call.name} failed"}
-                    if "error" not in result:
-                        ctx.called.append(call.name)
-                        ctx.outputs.append(result)
                 else:
                     result = {"error": f"unknown tool {call.name}"}
                 seq += 1
@@ -546,7 +562,8 @@ def triage(pool, settings: Settings, clock: Clock, user: User, store: ScopedStor
              json.dumps(failures), summary, run_id))
     log(logger, logging.INFO, "triage finished", incident=incident_id, user=user.id, outcome=outcome, ms=ms_total,
         prompt_tokens=usage["prompt"], completion_tokens=usage["completion"], failures=len(failures))
-    return {"run": store.latest_run(incident_id), "playbooks": store.playbooks(incident_id, role_only=True), "cached": False}
+    return {"run": store.latest_run(incident_id), "playbooks": store.playbooks(incident_id, role_only=True), "cached": False,
+            "fetched_clauses": sorted({cid for _chain, cid in ctx.clauses_seen})}
 
 
 def _step_summary(name: str, res: dict) -> str:

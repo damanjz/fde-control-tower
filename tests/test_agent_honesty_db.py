@@ -34,13 +34,11 @@ def ctx(pool, settings, world):
     def make(user="asha", incident="geo"):
         st = ScopedStore(pool, USERS[user], NOW, None)
         c = agent.Ctx(pool, settings, FixedClock(NOW), USERS[user], st, st.incident(world[incident]), 1)
-        for fn, args in ((agent.tool_get_incident, {}), (agent.tool_find_affected, {}), (agent.tool_compute_exposure, {}),
-                         (agent.tool_get_clause, {"query": "late delivery penalty per day", "chain": "Kirana network"}),
-                         (agent.tool_get_clause, {"query": "force majeure weather notified within hours", "chain": "Kirana network"}),
-                         (agent.tool_list_options, {})):
-            out = fn(c, args)
-            c.outputs.append(out)
-            c.called.append(fn.__name__.removeprefix("tool_"))
+        for name, args in (("get_incident", {}), ("find_affected", {}), ("compute_exposure", {}),
+                           ("get_clause", {"query": "late delivery penalty per day", "chain": "Kirana network"}),
+                           ("get_clause", {"query": "force majeure weather notified within hours", "chain": "Kirana network"}),
+                           ("list_options", {})):
+            agent.run_tool(c, name, args)
         return c
     return make
 
@@ -134,8 +132,9 @@ def test_playbook_count_duplicates_and_wrong_kind_are_rejected(ctx):
 
 
 @pytest.mark.db
-def test_the_tool_loop_rejects_an_early_proposal_and_never_lets_a_tool_crash_the_run(ctx):
-    """Tools return errors as data: an unknown incident id or tool never raises into the loop."""
+def test_a_tool_answers_for_the_incident_in_its_context_and_returns_plain_json(ctx):
+    """A tool ignores an incident id the model passes and answers for its own run. The loop's rules (an early proposal,
+    a crashing tool) are tested with a scripted model in test_agent_loop_db.py."""
     c = ctx()
     assert agent.TOOL_FUNCS["get_incident"](c, {"incident_id": 999})["incident_id"] == c.ev["id"]   # the context id wins
     json.dumps(agent.tool_list_options(c, {}))

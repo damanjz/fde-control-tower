@@ -49,8 +49,7 @@ def engine_view(pool, settings: Settings, built: dict, role: str) -> dict:
         view.update(options=[], breakdown=None, rows=[], numbers=[], incident=full.incident(iid))
         return view
     ctx = agent.Ctx(pool, settings, FixedClock(now), user, store, inc, 0)
-    outputs = [agent.tool_get_incident(ctx, {}), agent.tool_find_affected(ctx, {}), agent.tool_compute_exposure(ctx, {}),
-               agent.tool_list_options(ctx, {})]
+    outputs = [agent.run_tool(ctx, name) for name in ("get_incident", "find_affected", "compute_exposure", "list_options")]
     planner = Planner(pool, store, inc, now)
     alts = planner.alternatives()
     rows = store.impact_rows(iid)
